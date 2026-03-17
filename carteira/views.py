@@ -465,6 +465,8 @@ def catalogo_fundos(request):
     fund_type_filter = (request.GET.get("fund_type") or "").strip()
     manager_operator = (request.GET.get("manager_operator") or "contains").strip()
     manager_filter = (request.GET.get("manager_filter") or "").strip().lower()
+    administrator_operator = (request.GET.get("administrator_operator") or "contains").strip()
+    administrator_filter = (request.GET.get("administrator_filter") or "").strip().lower()
     sort = (request.GET.get("sort") or "").strip()
     per_page = request.GET.get("per_page") or "20"
     fund_type_options = sorted({fund.get("product_type", "") for fund in funds if fund.get("product_type", "")})
@@ -476,6 +478,16 @@ def catalogo_fundos(request):
             fund
             for fund in funds
             if _matches_text_filter(str(fund.get("manager_name", "")), manager_operator, manager_filter)
+        ]
+    if administrator_filter:
+        funds = [
+            fund
+            for fund in funds
+            if _matches_text_filter(
+                str(fund.get("administrator_name", "")),
+                administrator_operator,
+                administrator_filter,
+            )
         ]
 
     if sort == "pl_asc":
@@ -498,6 +510,8 @@ def catalogo_fundos(request):
         "fund_type_filter": fund_type_filter,
         "manager_operator": manager_operator,
         "manager_filter": manager_filter,
+        "administrator_operator": administrator_operator,
+        "administrator_filter": administrator_filter,
         "sort": sort,
         "per_page": str(per_page_value),
     }

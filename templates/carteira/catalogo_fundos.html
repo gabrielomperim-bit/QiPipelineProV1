@@ -27,11 +27,20 @@
             <p>
                 <label for="manager_filter">Consultoria</label>
                 <select name="manager_operator" id="manager_operator">
-                    <option value="contains" {% if manager_operator == "contains" %}selected{% endif %}>contém</option>
-                    <option value="eq" {% if manager_operator == "eq" %}selected{% endif %}>==</option>
-                    <option value="neq" {% if manager_operator == "neq" %}selected{% endif %}>!=</option>
+                    <option value="contains" {% if manager_operator == "contains" %}selected{% endif %}>contem</option>
+                    <option value="eq" {% if manager_operator == "eq" %}selected{% endif %}>igual a</option>
+                    <option value="neq" {% if manager_operator == "neq" %}selected{% endif %}>diferente de</option>
                 </select>
                 <input type="text" name="manager_filter" id="manager_filter" value="{{ manager_filter }}" placeholder="Filtrar consultoria">
+            </p>
+            <p>
+                <label for="administrator_filter">Administrador</label>
+                <select name="administrator_operator" id="administrator_operator">
+                    <option value="contains" {% if administrator_operator == "contains" %}selected{% endif %}>contem</option>
+                    <option value="eq" {% if administrator_operator == "eq" %}selected{% endif %}>igual a</option>
+                    <option value="neq" {% if administrator_operator == "neq" %}selected{% endif %}>diferente de</option>
+                </select>
+                <input type="text" name="administrator_filter" id="administrator_filter" value="{{ administrator_filter }}" placeholder="Filtrar administrador">
             </p>
             <p>
                 <label for="sort">Ordenar</label>
@@ -65,6 +74,7 @@
                         <th>PL</th>
                         <th>Tipo de fundo</th>
                         <th>Consultoria</th>
+                        <th>Administrador</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -80,6 +90,7 @@
                             <td>{{ fund.formatted_pl }}</td>
                             <td>{{ fund.product_type }}</td>
                             <td>{{ fund.manager_name|default:"-" }}</td>
+                            <td>{{ fund.administrator_name|default:"-" }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -90,10 +101,10 @@
             <span>Pagina {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
             <div class="pagination-links">
                 {% if page_obj.has_previous %}
-                    <a href="?consulta={{ request.GET.consulta }}&fund_type={{ fund_type_filter }}&manager_operator={{ manager_operator }}&manager_filter={{ manager_filter }}&sort={{ sort }}&per_page={{ per_page }}&page={{ page_obj.previous_page_number }}">Anterior</a>
+                    <a href="?consulta={{ request.GET.consulta }}&fund_type={{ fund_type_filter }}&manager_operator={{ manager_operator }}&manager_filter={{ manager_filter }}&administrator_operator={{ administrator_operator }}&administrator_filter={{ administrator_filter }}&sort={{ sort }}&per_page={{ per_page }}&page={{ page_obj.previous_page_number }}">Anterior</a>
                 {% endif %}
                 {% if page_obj.has_next %}
-                    <a href="?consulta={{ request.GET.consulta }}&fund_type={{ fund_type_filter }}&manager_operator={{ manager_operator }}&manager_filter={{ manager_filter }}&sort={{ sort }}&per_page={{ per_page }}&page={{ page_obj.next_page_number }}">Proxima</a>
+                    <a href="?consulta={{ request.GET.consulta }}&fund_type={{ fund_type_filter }}&manager_operator={{ manager_operator }}&manager_filter={{ manager_filter }}&administrator_operator={{ administrator_operator }}&administrator_filter={{ administrator_filter }}&sort={{ sort }}&per_page={{ per_page }}&page={{ page_obj.next_page_number }}">Proxima</a>
                 {% endif %}
             </div>
         </div>
