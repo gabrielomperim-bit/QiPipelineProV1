@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Visao geral{% endblock %}
+{% block page_title %}Visao geral{% endblock %}
+
+{% block content %}
+<section class="hero-card">
+    <div class="hero-copy">
+        <p class="eyebrow">Carteira</p>
+        <h2>Resumo rapido da operacao</h2>
+        {% if cvm_metadata %}
+            <p class="muted">Base CVM sincronizada em {{ cvm_metadata.imported_at }}.</p>
+        {% else %}
+            <p class="muted">A base CVM ainda nao foi sincronizada.</p>
+        {% endif %}
+    </div>
+    <div class="metrics-grid">
+        <article class="metric-card">
+            <span>Total de clientes</span>
+            <strong>{{ metrics.total_clients }}</strong>
+        </article>
+        <article class="metric-card">
+            <span>Fundos cadastrados</span>
+            <strong>{{ metrics.total_funds }}</strong>
+        </article>
+        <article class="metric-card">
+            <span>Receita mensal da carteira</span>
+            <strong>{{ metrics.total_revenue }}</strong>
+        </article>
+    </div>
+</section>
+
+<section class="content-card">
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">Onboarding</p>
+            <h2>Proximos passos sugeridos</h2>
+        </div>
+        {% if cvm_metadata %}
+            <a class="button-link" href="{% url 'clientes_qi_descobertos' %}">Descobrir clientes via Qi</a>
+        {% else %}
+            <a class="button-link" href="{% url 'sincronizar_cvm' %}">Sincronizar CVM</a>
+        {% endif %}
+    </div>
+
+    {% if not cvm_metadata %}
+        <p class="empty-state">Passo 1: sincronize a base da CVM para habilitar a descoberta automatica dos clientes com fundos ligados a Qi.</p>
+    {% else %}
+        <div class="metrics-grid">
+            <article class="metric-card">
+                <span>Base CVM</span>
+                <strong>Pronta</strong>
+            </article>
+            <article class="metric-card">
+                <span>Clientes sugeridos</span>
+                <strong>{{ qi_candidates_preview|length }}</strong>
+            </article>
+            <article class="metric-card">
+                <span>Proximo objetivo</span>
+                <strong>Importar clientes Qi</strong>
+            </article>
+        </div>
+        {% if qi_candidates_preview %}
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cliente sugerido</th>
+                            <th>Categoria</th>
+                            <th>Fundos encontrados</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for candidate in qi_candidates_preview %}
+                            <tr>
+                                <td>{{ candidate.name }}</td>
+                                <td>{{ candidate.category }}</td>
+                                <td>{{ candidate.fund_count }}</td>
+                                <td>{% if candidate.already_exists %}Ja cadastrado{% else %}Pendente{% endif %}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="empty-state">Nenhum cliente sugerido ainda. Isso pode acontecer antes da sincronizacao ou quando a base local precisa ser atualizada.</p>
+        {% endif %}
+    {% endif %}
+</section>
+
+<section class="content-card">
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">Classificacao</p>
+            <h2>Clientes por categoria</h2>
+        </div>
+        <a class="button-link" href="{% url 'importar_carteira' %}">Importar carteira</a>
+    </div>
+
+    {% for group in groups %}
+        <details class="group-dropdown" {% if group.count %}open{% endif %}>
+            <summary class="group-header">
+                <div>
+                    <h3>{{ group.label }}</h3>
+                    <p class="muted">{{ group.count }} cliente{{ group.count|pluralize }}</p>
+                </div>
+                <div class="summary-meta">
+                    <strong>{{ group.monthly_revenue_total }}</strong>
+                    <span class="disclosure-indicator">Abrir</span>
+                </div>
+            </summary>
+            {% if group.clients %}
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Receita mensal</th>
+                                <th>Fonte</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for client in group.clients %}
+                                <tr>
+                                    <td><a href="{% url 'detalhe_cliente' client.id %}">{{ client.name }}</a></td>
+                                    <td>{{ client.monthly_revenue|default:"-" }}</td>
+                                    <td>{{ client.monthly_revenue_source|default:"-" }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="empty-state">Ainda nao ha clientes nessa categoria.</p>
+            {% endif %}
+        </details>
+    {% endfor %}
+</section>
+{% endblock %}

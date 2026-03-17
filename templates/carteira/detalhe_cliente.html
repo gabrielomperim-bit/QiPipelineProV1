@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}{{ client.name }}{% endblock %}
+{% block page_title %}{{ client.name }}{% endblock %}
+
+{% block content %}
+<section class="hero-card">
+    <div>
+        <p class="eyebrow">{{ client.category_label }}</p>
+        <h2>{{ client.name }}</h2>
+        <p class="muted">{{ client.notes|default:"Sem observacoes registradas." }}</p>
+        {% if client.formatted_company_cnpj %}
+            <p class="muted">CNPJ do cliente: {{ client.formatted_company_cnpj }}{% if client.company_cnpj_source %} • {{ client.company_cnpj_source }}{% endif %}</p>
+        {% endif %}
+        {% if cvm_metadata %}
+            <p><a class="button-link" href="{% url 'buscar_fundos_cliente' client.id %}">Buscar fundos na CVM</a></p>
+        {% else %}
+            <p><a class="button-link" href="{% url 'sincronizar_cvm' %}">Sincronizar base CVM</a></p>
+        {% endif %}
+        <form method="post" action="{% url 'remover_cliente' client.id %}" onsubmit="return confirm('Tem certeza que deseja remover este cliente e todos os dados vinculados?');">
+            {% csrf_token %}
+            <button type="submit" class="danger-button">Remover cliente</button>
+        </form>
+    </div>
+    <div class="metrics-grid">
+        <article class="metric-card">
+            <span>Receita mensal</span>
+            <strong>{{ client.formatted_revenue }}</strong>
+        </article>
+        <article class="metric-card">
+            <span>Fonte da receita</span>
+            <strong>{{ client.monthly_revenue_source|default:"Nao informada" }}</strong>
+        </article>
+        <article class="metric-card">
+            <span>Fundos associados</span>
+            <strong>{{ client.funds|length }}</strong>
+        </article>
+    </div>
+</section>
+
+<section class="content-card">
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">Relacionamento</p>
+            <h2>Dados do cliente</h2>
+        </div>
+        <form method="post" action="{% url 'enriquecer_cliente' client.id %}">
+            {% csrf_token %}
+            <button type="submit">Atualizar dados por CNPJ</button>
+        </form>
+    </div>
+
+    <details class="candidate-dropdown" open>
+        <summary class="candidate-summary">
+            <div>
+                <strong>Perfil institucional e contatos</strong>
+                <p class="muted">Dados institucionais recuperados por CNPJ e contatos comerciais cadastrados.</p>
+            </div>
+            <div class="summary-meta">
+                <span class="status-pill status-pending">{{ client.contacts|length }} contato{{ client.contacts|length|pluralize }}</span>
+                <span class="disclosure-indicator">Abrir</span>
+            </div>
+        </summary>
+        <div class="candidate-body">
+            {% if client.company_profiles %}
+                <div class="stack-list company-profile-list">
+                    {% for profile in client.company_profiles %}
+                        <details class="group-dropdown" open>
+                            <summary class="group-header">
+                                <div>
+                                    <h3>{{ profile.trade_name|default:profile.legal_name }}</h3>
+                                    <p class="muted">{{ profile.cnpj }} • {{ profile.status|default:"Sem status" }}</p>
+                                </div>
+                                <div class="summary-meta">
+                                    <span class="disclosure-indicator">Perfil</span>
+                                </div>
+                            </summary>
+                            <div class="contact-form-box">
+                                <div class="profile-grid">
+                                    <p><strong>Razao social:</strong> {{ profile.legal_name|default:"-" }}</p>
+                                    <p><strong>Nome fantasia:</strong> {{ profile.trade_name|default:"-" }}</p>
+                                    <p><strong>E-mail:</strong> {{ profile.email|default:"-" }}</p>
+                                    <p><strong>Telefone:</strong> {{ profile.phone|default:"-" }}</p>
+                                    <p><strong>Cidade/UF:</strong> {% if profile.city or profile.state %}{{ profile.city }}{% if profile.city and profile.state %}/{% endif %}{{ profile.state }}{% else %}-{% endif %}</p>
+                                    <p><strong>Atividade principal:</strong> {{ profile.main_activity|default:"-" }}</p>
+                                    <p class="profile-wide"><strong>Socios/administradores:</strong> {{ profile.partners_summary|default:"-" }}</p>
+                                    <p class="profile-wide"><strong>Fonte:</strong> {{ profile.source|default:"-" }}</p>
+                                </div>
+                            </div>
+                        </details>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="empty-state">Ainda nao ha dados institucionais carregados. Use "Atualizar dados por CNPJ" para preencher a partir do CNPJ do proprio cliente.</p>
+            {% endif %}
+
+            {% if client.contacts %}
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Cargo</th>
+                                <th>Area</th>
+                                <th>E-mail</th>
+                                <th>Telefone</th>
+                                <th>LinkedIn</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for contact in client.contacts %}
+                                <tr>
+                                    <td>{{ contact.name }}</td>
+                                    <td>{{ contact.role_label }}</td>
+                                    <td>{{ contact.area|default:"-" }}</td>
+                                    <td>{% if contact.email %}<a href="mailto:{{ contact.email }}">{{ contact.email }}</a>{% else %}-{% endif %}</td>
+                                    <td>{{ contact.phone|default:"-" }}</td>
+                                    <td>{% if contact.linkedin %}<a href="{{ contact.linkedin }}" target="_blank" rel="noreferrer">Abrir perfil</a>{% else %}-{% endif %}</td>
+                                </tr>
+                                {% if contact.notes %}
+                                    <tr>
+                                        <td colspan="6" class="contact-notes">{{ contact.notes }}</td>
+                                    </tr>
+                                {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="empty-state">Nenhum contato cadastrado ainda para este cliente.</p>
+            {% endif %}
+
+            <details class="group-dropdown contact-entry-box">
+                <summary class="group-header">
+                    <div>
+                        <h3>Adicionar contato</h3>
+                        <p class="muted">Cadastrar CO, chefe, gerente ou outro responsavel.</p>
+                    </div>
+                    <div class="summary-meta">
+                        <span class="disclosure-indicator">Novo contato</span>
+                    </div>
+                </summary>
+                <div class="contact-form-box">
+                    <form method="post" action="{% url 'adicionar_contato_cliente' client.id %}" class="stack-form">
+                        {% csrf_token %}
+                        {{ contact_form.as_p }}
+                        <button type="submit">Salvar contato</button>
+                    </form>
+                </div>
+            </details>
+        </div>
+    </details>
+</section>
+
+<section class="content-card">
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">Fundos</p>
+            <h2>Lista de fundos na QiTech</h2>
+        </div>
+    </div>
+
+    {% if client.funds %}
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fundo</th>
+                        <th>CNPJ</th>
+                        <th>PL</th>
+                        <th>Receita mensal</th>
+                        <th>Taxa anual</th>
+                        <th>Tipo de produto</th>
+                        <th>Gestor</th>
+                        <th>Administrador</th>
+                        <th>Ajuste</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fund in client.funds %}
+                        <tr>
+                            <td>{{ fund.fund_name }}</td>
+                            <td>{{ fund.cnpj }}</td>
+                            <td>{{ fund.formatted_pl }}</td>
+                            <td>{{ fund.formatted_revenue }}</td>
+                            <td>{{ fund.formatted_fee_rate }}</td>
+                            <td>{{ fund.product_type }}</td>
+                            <td>{{ fund.manager_name|default:"-" }}</td>
+                            <td>{{ fund.administrator_name|default:"-" }}</td>
+                            <td>
+                                <form method="post" action="{% url 'atualizar_receita_fundo' client.id %}" class="inline-form">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="fund_id" value="{{ fund.id }}">
+                                    <input type="number" step="0.0001" min="0" name="{{ fund.id }}-annual_fee_rate" value="{{ fund.annual_fee_rate|default:'0.0000' }}">
+                                    <input type="hidden" name="{{ fund.id }}-fund_id" value="{{ fund.id }}">
+                                    <button type="submit">Recalcular</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p class="muted">Formula usada: receita mensal = PL x taxa anual / 12.</p>
+    {% else %}
+        <p class="empty-state">
+            Ainda nao existem fundos vinculados a este cliente. Na proxima etapa podemos automatizar a busca na CVM e preencher esta tabela.
+        </p>
+    {% endif %}
+</section>
+{% endblock %}

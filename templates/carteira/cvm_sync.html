@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Sincronizar CVM{% endblock %}
+
+{% block content %}
+<section class="content-card">
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">CVM</p>
+            <h2>Sincronizar dados oficiais</h2>
+        </div>
+    </div>
+
+    <p class="muted">
+        Esta rotina baixa o cadastro oficial de fundos/classes e o informe diario mais recente para preencher o cache local do sistema.
+    </p>
+
+    {% if metadata %}
+        <div class="summary-box">
+            <p><strong>Ultima sincronizacao:</strong> {{ metadata.imported_at }}</p>
+            <p><strong>Arquivo diario:</strong> {{ metadata.inf_diario_file }}</p>
+        </div>
+    {% endif %}
+
+    {% if error_message %}
+        <div class="summary-box">
+            <strong>Erro:</strong> {{ error_message }}
+        </div>
+    {% endif %}
+
+    {% if sync_result %}
+        <div class="summary-box">
+            <h3>Sincronizacao concluida</h3>
+            <ul>
+                {% for detail in sync_result.details %}
+                    <li>{{ detail }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit">Baixar dados da CVM</button>
+    </form>
+</section>
+{% endblock %}
+

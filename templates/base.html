@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Qi Pipeline{% endblock %}</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'styles/app.css' %}">
+</head>
+<body>
+    <div class="page-shell">
+        <aside class="sidebar">
+            <div class="brand-block">
+                <div class="brand-mark">Qi</div>
+                <div>
+                    <p class="eyebrow">Qi Pipeline Pro</p>
+                    <h1>Workspace</h1>
+                </div>
+            </div>
+            <nav class="nav-links">
+                <a href="{% url 'dashboard' %}">Visao geral</a>
+                <a href="{% url 'importar_carteira' %}">Importar planilha</a>
+                <a href="{% url 'sincronizar_cvm' %}">Sincronizar CVM</a>
+                <a href="{% url 'clientes_qi_descobertos' %}">Clientes via Qi</a>
+                <a href="{% url 'regras_receita' %}">Regras de receita</a>
+                <a href="{% url 'novo_cliente' %}">Cadastrar cliente</a>
+            </nav>
+            <div class="sidebar-note">
+                <span class="note-label">Modo de uso</span>
+                <strong>1. Sincronize</strong>
+                <strong>2. Descubra clientes</strong>
+                <strong>3. Vincule fundos</strong>
+                <strong>4. Calcule receita</strong>
+            </div>
+        </aside>
+        <main class="main-content">
+            <header class="workspace-bar">
+                <div>
+                    <p class="eyebrow">Workspace</p>
+                    <h2>{% block page_title %}Painel{% endblock %}</h2>
+                </div>
+                <div class="workspace-pill">Modelo inspirado em workspace</div>
+            </header>
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</body>
+</html>

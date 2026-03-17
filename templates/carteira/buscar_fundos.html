@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Buscar fundos{% endblock %}
+
+{% block content %}
+<section class="content-card">
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">CVM</p>
+            <h2>Buscar fundos para {{ client.name }}</h2>
+        </div>
+    </div>
+
+    {% if not metadata %}
+        <div class="summary-box">
+            <p>Antes de buscar, sincronize a base oficial da CVM.</p>
+            <a class="button-link" href="{% url 'sincronizar_cvm' %}">Sincronizar agora</a>
+        </div>
+    {% else %}
+        <form method="get" class="stack-form">
+            {{ form.as_p }}
+            <button type="submit">Pesquisar fundos</button>
+        </form>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fundo</th>
+                        <th>CNPJ</th>
+                        <th>PL</th>
+                        <th>Tipo</th>
+                        <th>Relacao com Qi</th>
+                        <th>Gestor</th>
+                        <th>Administrador</th>
+                        <th>Acao</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fund in results %}
+                        <tr>
+                            <td>{{ fund.fund_name }}</td>
+                            <td>{{ fund.cnpj }}</td>
+                            <td>{{ fund.pl }}</td>
+                            <td>{{ fund.product_type }}</td>
+                            <td>{{ fund.qi_relationship_role|default:"-" }}</td>
+                            <td>{{ fund.manager_name|default:"-" }}</td>
+                            <td>{{ fund.administrator_name|default:"-" }}</td>
+                            <td>
+                                <form method="post" action="{% url 'vincular_fundo_cliente' client.id %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="cvm_fund_id" value="{{ fund.cvm_fund_id }}">
+                                    <input type="hidden" name="cvm_class_id" value="{{ fund.cvm_class_id }}">
+                                    <input type="hidden" name="fund_name" value="{{ fund.fund_name }}">
+                                    <input type="hidden" name="cnpj" value="{{ fund.cnpj }}">
+                                    <input type="hidden" name="pl" value="{{ fund.pl }}">
+                                    <input type="hidden" name="product_type" value="{{ fund.product_type }}">
+                                    <input type="hidden" name="manager_name" value="{{ fund.manager_name }}">
+                                    <input type="hidden" name="administrator_name" value="{{ fund.administrator_name }}">
+                                    <input type="hidden" name="status" value="{{ fund.status }}">
+                                    <button type="submit">Vincular</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="8">Nenhum fundo encontrado com os filtros atuais.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p class="muted">
+            O filtro da Qi usa o CNPJ informado da Qi Tech: <code>30.620.610/0001-59</code>.
+        </p>
+    {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Clientes via Qi{% endblock %}
+{% block page_title %}Clientes via Qi{% endblock %}
+
+{% block content %}
+<section class="content-card">
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">Qi</p>
+            <h2>Clientes descobertos automaticamente</h2>
+        </div>
+        {% if metadata %}
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="import_all">
+                <button type="submit">Importar todos os pendentes</button>
+            </form>
+        {% endif %}
+    </div>
+
+    <p class="muted">
+        Esta tela tenta montar sua carteira automaticamente com todas as empresas que possuem fundos ligados a Qi ou ao grupo de CNPJs configurado.
+    </p>
+
+    {% if not metadata %}
+        <div class="summary-box">
+            <p>Antes de descobrir clientes, sincronize a base oficial da CVM.</p>
+            <a class="button-link" href="{% url 'sincronizar_cvm' %}">Sincronizar agora</a>
+        </div>
+    {% else %}
+        {% if import_summary %}
+            <div class="summary-box">
+                {% if import_summary.single_client %}
+                    <p><strong>{{ import_summary.single_client }}</strong> processado com {{ import_summary.linked_funds }} fundo{{ import_summary.linked_funds|pluralize }} vinculado{{ import_summary.linked_funds|pluralize }}.</p>
+                {% else %}
+                    <p><strong>{{ import_summary.imported_clients }}</strong> cliente{{ import_summary.imported_clients|pluralize }} importado{{ import_summary.imported_clients|pluralize }}.</p>
+                    <p><strong>{{ import_summary.linked_funds }}</strong> fundo{{ import_summary.linked_funds|pluralize }} vinculado{{ import_summary.linked_funds|pluralize }}.</p>
+                {% endif %}
+            </div>
+        {% endif %}
+
+        <form method="get" class="stack-form search-box">
+            {{ search_form.as_p }}
+            <button type="submit">Pesquisar</button>
+        </form>
+
+        <div class="stack-list">
+            {% for candidate in candidates %}
+                <details class="candidate-dropdown">
+                    <summary class="candidate-summary">
+                        <div>
+                            <strong>{{ candidate.name }}</strong>
+                            <p class="muted">{{ candidate.category }} • {{ candidate.fund_count }} fundo{{ candidate.fund_count|pluralize }} • {{ candidate.company_cnpj|default:"CNPJ nao identificado" }}</p>
+                        </div>
+                        <div class="summary-meta">
+                            <span class="status-pill {% if candidate.already_exists %}status-done{% else %}status-pending{% endif %}">
+                                {% if candidate.already_exists %}Ja cadastrado{% else %}Pendente{% endif %}
+                            </span>
+                            <span class="disclosure-indicator">Detalhes</span>
+                        </div>
+                    </summary>
+                    <div class="candidate-body">
+                        <p><strong>Papel da Qi:</strong> {{ candidate.relationship_roles|default:"-" }}</p>
+                        <p><strong>Fundos encontrados:</strong> {{ candidate.fund_count }}</p>
+                        {% if candidate.already_exists %}
+                            <a class="button-link" href="{% url 'detalhe_cliente' candidate.existing_client_id %}">Abrir cliente</a>
+                        {% else %}
+                            <form method="post" class="inline-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="import_one">
+                                <input type="hidden" name="client_name" value="{{ candidate.name }}">
+                                <button type="submit">Importar cliente</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </details>
+            {% empty %}
+                <p class="empty-state">Nenhum cliente foi descoberto com os filtros atuais da base local.</p>
+            {% endfor %}
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

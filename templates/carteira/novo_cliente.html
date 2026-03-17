@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Novo cliente{% endblock %}
+
+{% block content %}
+<section class="content-card">
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">Cadastro</p>
+            <h2>Adicionar cliente manualmente</h2>
+        </div>
+    </div>
+
+    <form method="post" class="stack-form">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Salvar cliente</button>
+    </form>
+</section>
+{% endblock %}
+

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Importar carteira{% endblock %}
+
+{% block content %}
+<section class="content-card">
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">Importacao</p>
+            <h2>Carregar planilha da carteira</h2>
+        </div>
+    </div>
+
+    <p class="muted">
+        Formatos aceitos:
+        planilha em colunas por categoria (<code>Gestora</code>, <code>Consultoria</code>, <code>Banco</code>, <code>Securitizadora</code>, <code>Outros</code>)
+        ou tabela padrao com colunas como <code>cliente</code>, <code>categoria</code> e <code>receita mensal</code>.
+    </p>
+
+    <form method="post" enctype="multipart/form-data" class="stack-form">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Importar arquivo</button>
+    </form>
+
+    {% if summary %}
+        <div class="summary-box">
+            <h3>Resultado da importacao</h3>
+            <p><strong>{{ summary.imported_count }}</strong> registros importados.</p>
+            <p><strong>{{ summary.skipped_count }}</strong> registros ignorados.</p>
+            <ul>
+                {% for detail in summary.details %}
+                    <li>{{ detail }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}
+
