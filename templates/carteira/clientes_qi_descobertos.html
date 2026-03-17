@@ -1,26 +1,19 @@
 {% extends "base.html" %}
 
-{% block title %}Clientes via Qi{% endblock %}
-{% block page_title %}Clientes via Qi{% endblock %}
+{% block title %}Clientes via QI | QITech{% endblock %}
+{% block page_title %}Clientes via QI{% endblock %}
 
 {% block content %}
 <section class="content-card">
     <div class="section-header">
         <div>
-            <p class="eyebrow">Qi</p>
+            <p class="eyebrow">QITech</p>
             <h2>Clientes descobertos automaticamente</h2>
         </div>
-        {% if metadata %}
-            <form method="post">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="import_all">
-                <button type="submit">Importar todos os pendentes</button>
-            </form>
-        {% endif %}
     </div>
 
     <p class="muted">
-        Esta tela tenta montar sua carteira automaticamente com todas as empresas que possuem fundos ligados a Qi ou ao grupo de CNPJs configurado.
+        Esta tela tenta montar sua carteira automaticamente com todas as empresas que possuem fundos ligados a QITech ou ao grupo de CNPJs configurado.
     </p>
 
     {% if not metadata %}
@@ -31,12 +24,7 @@
     {% else %}
         {% if import_summary %}
             <div class="summary-box">
-                {% if import_summary.single_client %}
-                    <p><strong>{{ import_summary.single_client }}</strong> processado com {{ import_summary.linked_funds }} fundo{{ import_summary.linked_funds|pluralize }} vinculado{{ import_summary.linked_funds|pluralize }}.</p>
-                {% else %}
-                    <p><strong>{{ import_summary.imported_clients }}</strong> cliente{{ import_summary.imported_clients|pluralize }} importado{{ import_summary.imported_clients|pluralize }}.</p>
-                    <p><strong>{{ import_summary.linked_funds }}</strong> fundo{{ import_summary.linked_funds|pluralize }} vinculado{{ import_summary.linked_funds|pluralize }}.</p>
-                {% endif %}
+                <p><strong>{{ import_summary.single_client }}</strong> processado com {{ import_summary.linked_funds }} fundo{{ import_summary.linked_funds|pluralize }} vinculado{{ import_summary.linked_funds|pluralize }}.</p>
             </div>
         {% endif %}
 
@@ -45,13 +33,13 @@
             <button type="submit">Pesquisar</button>
         </form>
 
-        <div class="stack-list">
+        <div class="stack-list" id="qi-candidates-list">
             {% for candidate in candidates %}
-                <details class="candidate-dropdown">
+                <details class="candidate-dropdown js-candidate-card">
                     <summary class="candidate-summary">
                         <div>
                             <strong>{{ candidate.name }}</strong>
-                            <p class="muted">{{ candidate.category }} • {{ candidate.fund_count }} fundo{{ candidate.fund_count|pluralize }} • {{ candidate.company_cnpj|default:"CNPJ nao identificado" }}</p>
+                            <p class="muted">{{ candidate.category }} | {{ candidate.fund_count }} fundo{{ candidate.fund_count|pluralize }} | {{ candidate.company_cnpj|default:"CNPJ nao identificado" }}</p>
                         </div>
                         <div class="summary-meta">
                             <span class="status-pill {% if candidate.already_exists %}status-done{% else %}status-pending{% endif %}">
@@ -61,8 +49,50 @@
                         </div>
                     </summary>
                     <div class="candidate-body">
-                        <p><strong>Papel da Qi:</strong> {{ candidate.relationship_roles|default:"-" }}</p>
+                        <p><strong>Papel da QITech:</strong> {{ candidate.relationship_roles|default:"-" }}</p>
                         <p><strong>Fundos encontrados:</strong> {{ candidate.fund_count }}</p>
+
+                        {% if candidate.funds %}
+                            <div class="table-wrapper">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Fundo</th>
+                                            <th>CNPJ</th>
+                                            <th>PL</th>
+                                            <th>Tipo de fundo</th>
+                                            <th>Consultoria</th>
+                                            <th>Administrador</th>
+                                            <th>Regulamento</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="js-funds-body">
+                                        {% for fund in candidate.funds %}
+                                            <tr>
+                                                <td>{{ fund.fund_name }}</td>
+                                                <td>{{ fund.cnpj|default:"-" }}</td>
+                                                <td>{{ fund.formatted_pl }}</td>
+                                                <td>{{ fund.product_type|default:"-" }}</td>
+                                                <td>{{ fund.manager_name|default:"-" }}</td>
+                                                <td>{{ fund.administrator_name|default:"-" }}</td>
+                                                <td>
+                                                    <a class="icon-link" href="{{ fund.regulation_url }}" target="_blank" rel="noreferrer" download title="Baixar regulamento">&#x2B07;</a>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="pagination-bar nested-pagination js-funds-pagination" hidden>
+                                <span class="js-funds-page-label">Pagina 1 de 1 | 10 por pagina</span>
+                                <div class="pagination-links">
+                                    <button type="button" class="secondary-button js-funds-prev">Anterior</button>
+                                    <button type="button" class="secondary-button js-funds-next">Proxima</button>
+                                </div>
+                            </div>
+                        {% endif %}
+
                         {% if candidate.already_exists %}
                             <a class="button-link" href="{% url 'detalhe_cliente' candidate.existing_client_id %}">Abrir cliente</a>
                         {% else %}
@@ -79,6 +109,89 @@
                 <p class="empty-state">Nenhum cliente foi descoberto com os filtros atuais da base local.</p>
             {% endfor %}
         </div>
+
+        <div class="pagination-bar js-candidates-pagination" {% if not candidates %}hidden{% endif %}>
+            <span class="js-candidates-page-label">Pagina 1 de 1 | 20 por pagina</span>
+            <div class="pagination-links">
+                <button type="button" class="secondary-button js-candidates-prev">Anterior</button>
+                <button type="button" class="secondary-button js-candidates-next">Proxima</button>
+            </div>
+        </div>
     {% endif %}
 </section>
+<script>
+    (function () {
+        function setupPagination(items, pageSize, controls) {
+            if (!items.length) {
+                if (controls.wrapper) {
+                    controls.wrapper.hidden = true;
+                }
+                return;
+            }
+
+            var currentPage = 1;
+            var totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+
+            function render() {
+                var start = (currentPage - 1) * pageSize;
+                var end = start + pageSize;
+
+                items.forEach(function (item, index) {
+                    item.hidden = index < start || index >= end;
+                });
+
+                if (controls.label) {
+                    controls.label.textContent = "Pagina " + currentPage + " de " + totalPages + " | " + pageSize + " por pagina";
+                }
+                if (controls.prev) {
+                    controls.prev.disabled = currentPage === 1;
+                }
+                if (controls.next) {
+                    controls.next.disabled = currentPage === totalPages;
+                }
+                if (controls.wrapper) {
+                    controls.wrapper.hidden = totalPages <= 1;
+                }
+            }
+
+            if (controls.prev) {
+                controls.prev.addEventListener("click", function () {
+                    if (currentPage > 1) {
+                        currentPage -= 1;
+                        render();
+                    }
+                });
+            }
+
+            if (controls.next) {
+                controls.next.addEventListener("click", function () {
+                    if (currentPage < totalPages) {
+                        currentPage += 1;
+                        render();
+                    }
+                });
+            }
+
+            render();
+        }
+
+        var candidateCards = Array.prototype.slice.call(document.querySelectorAll(".js-candidate-card"));
+        setupPagination(candidateCards, 20, {
+            wrapper: document.querySelector(".js-candidates-pagination"),
+            label: document.querySelector(".js-candidates-page-label"),
+            prev: document.querySelector(".js-candidates-prev"),
+            next: document.querySelector(".js-candidates-next")
+        });
+
+        candidateCards.forEach(function (card) {
+            var fundRows = Array.prototype.slice.call(card.querySelectorAll(".js-funds-body tr"));
+            setupPagination(fundRows, 10, {
+                wrapper: card.querySelector(".js-funds-pagination"),
+                label: card.querySelector(".js-funds-page-label"),
+                prev: card.querySelector(".js-funds-prev"),
+                next: card.querySelector(".js-funds-next")
+            });
+        });
+    }());
+</script>
 {% endblock %}

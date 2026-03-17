@@ -10,7 +10,7 @@
         <h2>{{ client.name }}</h2>
         <p class="muted">{{ client.notes|default:"Sem observacoes registradas." }}</p>
         {% if client.formatted_company_cnpj %}
-            <p class="muted">CNPJ do cliente: {{ client.formatted_company_cnpj }}{% if client.company_cnpj_source %} • {{ client.company_cnpj_source }}{% endif %}</p>
+            <p class="muted">CNPJ do cliente: {{ client.formatted_company_cnpj }}{% if client.company_cnpj_source %} | {{ client.company_cnpj_source }}{% endif %}</p>
         {% endif %}
         {% if cvm_metadata %}
             <p><a class="button-link" href="{% url 'buscar_fundos_cliente' client.id %}">Buscar fundos na CVM</a></p>
@@ -69,7 +69,7 @@
                             <summary class="group-header">
                                 <div>
                                     <h3>{{ profile.trade_name|default:profile.legal_name }}</h3>
-                                    <p class="muted">{{ profile.cnpj }} • {{ profile.status|default:"Sem status" }}</p>
+                                    <p class="muted">{{ profile.cnpj }} | {{ profile.status|default:"Sem status" }}</p>
                                 </div>
                                 <div class="summary-meta">
                                     <span class="disclosure-indicator">Perfil</span>
@@ -156,8 +156,9 @@
     <div class="section-header">
         <div>
             <p class="eyebrow">Fundos</p>
-            <h2>Lista de fundos na QiTech</h2>
+            <h2>Lista de fundos na QITech</h2>
         </div>
+        <a class="button-link" href="{% url 'catalogo_fundos' %}">Abrir catalogo de fundos</a>
     </div>
 
     {% if client.funds %}
@@ -170,32 +171,34 @@
                         <th>PL</th>
                         <th>Receita mensal</th>
                         <th>Taxa anual</th>
-                        <th>Tipo de produto</th>
-                        <th>Gestor</th>
+                        <th>Tipo de fundo</th>
+                        <th>Consultoria</th>
                         <th>Administrador</th>
-                        <th>Ajuste</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for fund in client.funds %}
                         <tr>
-                            <td>{{ fund.fund_name }}</td>
+                            <td>
+                                <div class="fund-name-cell">
+                                    <span>{{ fund.fund_name }}</span>
+                                    <a class="icon-link" href="{{ fund.regulation_url }}" target="_blank" rel="noreferrer" download title="Baixar regulamento">&#x2B07;</a>
+                                </div>
+                            </td>
                             <td>{{ fund.cnpj }}</td>
                             <td>{{ fund.formatted_pl }}</td>
                             <td>{{ fund.formatted_revenue }}</td>
-                            <td>{{ fund.formatted_fee_rate }}</td>
+                            <td>
+                                <form method="post" action="{% url 'atualizar_receita_fundo' client.id %}" class="inline-form compact-form">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="fund_id" value="{{ fund.id }}">
+                                    <input type="number" step="0.0001" min="0" name="annual_fee_rate" value="{{ fund.annual_fee_rate|default:'0.0000' }}">
+                                    <button type="submit" title="Atualizar taxa">&#x21bb;</button>
+                                </form>
+                            </td>
                             <td>{{ fund.product_type }}</td>
                             <td>{{ fund.manager_name|default:"-" }}</td>
                             <td>{{ fund.administrator_name|default:"-" }}</td>
-                            <td>
-                                <form method="post" action="{% url 'atualizar_receita_fundo' client.id %}" class="inline-form">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="fund_id" value="{{ fund.id }}">
-                                    <input type="number" step="0.0001" min="0" name="{{ fund.id }}-annual_fee_rate" value="{{ fund.annual_fee_rate|default:'0.0000' }}">
-                                    <input type="hidden" name="{{ fund.id }}-fund_id" value="{{ fund.id }}">
-                                    <button type="submit">Recalcular</button>
-                                </form>
-                            </td>
                         </tr>
                     {% endfor %}
                 </tbody>

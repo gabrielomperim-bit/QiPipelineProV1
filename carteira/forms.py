@@ -47,7 +47,7 @@ class FundoBuscaForm(forms.Form):
         required=False,
     )
     somente_qi = forms.BooleanField(
-        label="Mostrar apenas registros com sinais de relacionamento com a Qi",
+        label="Mostrar apenas registros com sinais de relacionamento com a QITech",
         required=False,
         initial=True,
     )
@@ -55,7 +55,7 @@ class FundoBuscaForm(forms.Form):
 
 class RegraReceitaForm(forms.Form):
     product_type = forms.CharField(
-        label="Tipo de produto",
+        label="Tipo de fundo",
         max_length=160,
     )
     annual_fee_rate = forms.DecimalField(
@@ -110,4 +110,13 @@ class ClienteQiBuscaForm(forms.Form):
         max_length=140,
         required=False,
         help_text="Busque por nome, CNPJ ou categoria.",
+    )
+
+
+class FundoCatalogoBuscaForm(forms.Form):
+    consulta = forms.CharField(
+        label="Pesquisar fundo",
+        max_length=140,
+        required=False,
+        help_text="Busque por nome do fundo, cliente, CNPJ ou tipo de fundo.",
     )

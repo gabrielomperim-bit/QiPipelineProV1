@@ -1,18 +1,19 @@
 {% extends "base.html" %}
 
 {% block title %}Regras de receita{% endblock %}
+{% block page_title %}Regras de receita{% endblock %}
 
 {% block content %}
 <section class="content-card">
     <div class="section-header">
         <div>
             <p class="eyebrow">Receita</p>
-            <h2>Regras por tipo de produto</h2>
+            <h2>Regras por tipo de fundo</h2>
         </div>
     </div>
 
     <p class="muted">
-        Defina a taxa anual de cada tipo de produto. O sistema calcula a receita mensal com base em <code>PL x taxa / 12</code>.
+        Defina a taxa anual de cada tipo de fundo. O sistema calcula a receita mensal com base em <code>PL x taxa / 12</code>.
     </p>
 
     {% if known_product_types %}
@@ -42,10 +43,11 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Tipo de produto</th>
+                        <th>Tipo de fundo</th>
                         <th>Taxa anual</th>
                         <th>Observacoes</th>
                         <th>Atualizado em</th>
+                        <th>Remover</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -55,6 +57,12 @@
                             <td>{{ rule.annual_fee_rate }}%</td>
                             <td>{{ rule.notes|default:"-" }}</td>
                             <td>{{ rule.updated_at }}</td>
+                            <td>
+                                <form method="post" action="{% url 'remover_regra_receita' rule.product_type %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="danger-button subtle-danger" title="Excluir regra">&#x1F5D1;</button>
+                                </form>
+                            </td>
                         </tr>
                     {% endfor %}
                 </tbody>

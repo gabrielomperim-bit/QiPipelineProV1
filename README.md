@@ -54,6 +54,18 @@ Se quiser deixar facil para a usuaria final:
 
 - Primeira instalacao: `scripts\instalar_primeira_vez.bat`
 - Uso diario: `scripts\abrir_qi_pipeline.bat`
+- Reiniciar para outro usuario: `scripts\reiniciar_projeto.bat`
+
+## Reiniciar o projeto do zero
+
+Quando quiser limpar o projeto para outro usuario, execute:
+
+- `scripts\reiniciar_projeto.bat`
+
+O script oferece 2 modos:
+
+- `1`: limpa clientes, fundos, contatos, regras e uploads, mas preserva a base CVM ja sincronizada.
+- `2`: limpa tudo, incluindo os arquivos da CVM, exigindo nova sincronizacao depois.
 
 ## Proximos passos recomendados
 

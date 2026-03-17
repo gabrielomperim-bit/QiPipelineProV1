@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}Buscar fundos{% endblock %}
+{% block title %}Buscar fundos | QITech{% endblock %}
+{% block page_title %}Buscar fundos{% endblock %}
 
 {% block content %}
 <section class="content-card">
@@ -30,9 +31,10 @@
                         <th>CNPJ</th>
                         <th>PL</th>
                         <th>Tipo</th>
-                        <th>Relacao com Qi</th>
-                        <th>Gestor</th>
+                        <th>Relacao com QITech</th>
+                        <th>Consultoria</th>
                         <th>Administrador</th>
+                        <th>Regulamento</th>
                         <th>Acao</th>
                     </tr>
                 </thead>
@@ -47,6 +49,9 @@
                             <td>{{ fund.manager_name|default:"-" }}</td>
                             <td>{{ fund.administrator_name|default:"-" }}</td>
                             <td>
+                                <a class="icon-link" href="{{ fund.regulation_url }}" target="_blank" rel="noreferrer" download title="Baixar regulamento">&#x2B07;</a>
+                            </td>
+                            <td>
                                 <form method="post" action="{% url 'vincular_fundo_cliente' client.id %}">
                                     {% csrf_token %}
                                     <input type="hidden" name="cvm_fund_id" value="{{ fund.cvm_fund_id }}">
@@ -58,20 +63,21 @@
                                     <input type="hidden" name="manager_name" value="{{ fund.manager_name }}">
                                     <input type="hidden" name="administrator_name" value="{{ fund.administrator_name }}">
                                     <input type="hidden" name="status" value="{{ fund.status }}">
+                                    <input type="hidden" name="regulation_url" value="{{ fund.regulation_url }}">
                                     <button type="submit">Vincular</button>
                                 </form>
                             </td>
                         </tr>
                     {% empty %}
                         <tr>
-                            <td colspan="8">Nenhum fundo encontrado com os filtros atuais.</td>
+                            <td colspan="9">Nenhum fundo encontrado com os filtros atuais.</td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
         <p class="muted">
-            O filtro da Qi usa o CNPJ informado da Qi Tech: <code>30.620.610/0001-59</code>.
+            O filtro da QITech usa o CNPJ informado da QITech: <code>30.620.610/0001-59</code>.
         </p>
     {% endif %}
 </section>

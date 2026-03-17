@@ -3,25 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Qi Pipeline{% endblock %}</title>
+    <title>{% block title %}QITech Pipeline{% endblock %}</title>
     {% load static %}
+    <link rel="icon" type="image/svg+xml" href="{% static 'icons/qi-favicon.svg' %}">
     <link rel="stylesheet" href="{% static 'styles/app.css' %}">
 </head>
 <body>
     <div class="page-shell">
         <aside class="sidebar">
             <div class="brand-block">
-                <div class="brand-mark">Qi</div>
+                <div class="brand-mark">QI</div>
                 <div>
-                    <p class="eyebrow">Qi Pipeline Pro</p>
+                    <p class="eyebrow">QITech Pipeline Pro</p>
                     <h1>Workspace</h1>
                 </div>
             </div>
             <nav class="nav-links">
                 <a href="{% url 'dashboard' %}">Visao geral</a>
+                <a href="{% url 'catalogo_fundos' %}">Fundos</a>
                 <a href="{% url 'importar_carteira' %}">Importar planilha</a>
                 <a href="{% url 'sincronizar_cvm' %}">Sincronizar CVM</a>
-                <a href="{% url 'clientes_qi_descobertos' %}">Clientes via Qi</a>
+                <a href="{% url 'clientes_qi_descobertos' %}">Clientes via QI</a>
                 <a href="{% url 'regras_receita' %}">Regras de receita</a>
                 <a href="{% url 'novo_cliente' %}">Cadastrar cliente</a>
             </nav>

@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Fundos | QITech{% endblock %}
+{% block page_title %}Catalogo de fundos{% endblock %}
+
+{% block content %}
+<section class="content-card">
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">Fundos</p>
+            <h2>Todos os fundos de todos os clientes</h2>
+        </div>
+    </div>
+
+    <form method="get" class="stack-form search-box">
+        {{ search_form.as_p }}
+        <div class="filters-grid">
+            <p>
+                <label for="fund_type">Tipo de fundo</label>
+                <select name="fund_type" id="fund_type">
+                    <option value="">Todos</option>
+                    {% for option in fund_type_options %}
+                        <option value="{{ option }}" {% if fund_type_filter == option %}selected{% endif %}>{{ option }}</option>
+                    {% endfor %}
+                </select>
+            </p>
+            <p>
+                <label for="user_filter">Usuario administra</label>
+                <select name="user_filter" id="user_filter">
+                    <option value="" {% if not user_filter %}selected{% endif %}>Todos</option>
+                    <option value="true" {% if user_filter == "true" %}selected{% endif %}>Sim</option>
+                    <option value="false" {% if user_filter == "false" %}selected{% endif %}>Nao</option>
+                </select>
+            </p>
+            <p>
+                <label for="sort">Ordenar</label>
+                <select name="sort" id="sort">
+                    <option value="">Padrao</option>
+                    <option value="pl_asc" {% if sort == "pl_asc" %}selected{% endif %}>PL crescente</option>
+                    <option value="pl_desc" {% if sort == "pl_desc" %}selected{% endif %}>PL decrescente</option>
+                    <option value="revenue_asc" {% if sort == "revenue_asc" %}selected{% endif %}>Receita crescente</option>
+                    <option value="revenue_desc" {% if sort == "revenue_desc" %}selected{% endif %}>Receita decrescente</option>
+                </select>
+            </p>
+            <p>
+                <label for="per_page">Por pagina</label>
+                <select name="per_page" id="per_page">
+                    <option value="20" {% if per_page == "20" %}selected{% endif %}>20</option>
+                    <option value="50" {% if per_page == "50" %}selected{% endif %}>50</option>
+                    <option value="100" {% if per_page == "100" %}selected{% endif %}>100</option>
+                </select>
+            </p>
+        </div>
+        <button type="submit">Pesquisar</button>
+    </form>
+
+    {% if funds %}
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fundo</th>
+                        <th>Cliente</th>
+                        <th>CNPJ</th>
+                        <th>PL</th>
+                        <th>Receita mensal</th>
+                        <th>Tipo de fundo</th>
+                        <th>Usuario administra</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fund in funds %}
+                        <tr>
+                            <td>
+                                <div class="fund-name-cell">
+                                    <span>{{ fund.fund_name }}</span>
+                                    <a class="icon-link" href="{{ fund.regulation_url }}" target="_blank" rel="noreferrer" download title="Baixar regulamento">&#x2B07;</a>
+                                </div>
+                            </td>
+                            <td>
+                                {% if fund.has_client %}
+                                    <a href="{% url 'detalhe_cliente' fund.client_id %}">{{ fund.client_name }}</a>
+                                {% else %}
+                                    {{ fund.client_name }}
+                                {% endif %}
+                            </td>
+                            <td>{{ fund.cnpj }}</td>
+                            <td>{{ fund.formatted_pl }}</td>
+                            <td>{{ fund.formatted_revenue }}</td>
+                            <td>{{ fund.product_type }}</td>
+                            <td>
+                                <form method="post" action="{% url 'alternar_fundo_usuario' fund.client_id fund.id %}" class="inline-form compact-form checkbox-form">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <input type="hidden" name="is_user_fund" value="0">
+                                    <input type="checkbox" name="is_user_fund" value="1" {% if fund.is_user_fund_bool %}checked{% endif %} onchange="this.form.submit()">
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination-bar">
+            <span>Pagina {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+            <div class="pagination-links">
+                {% if page_obj.has_previous %}
+                    <a href="?consulta={{ request.GET.consulta }}&fund_type={{ fund_type_filter }}&user_filter={{ user_filter }}&sort={{ sort }}&per_page={{ per_page }}&page={{ page_obj.previous_page_number }}">Anterior</a>
+                {% endif %}
+                {% if page_obj.has_next %}
+                    <a href="?consulta={{ request.GET.consulta }}&fund_type={{ fund_type_filter }}&user_filter={{ user_filter }}&sort={{ sort }}&per_page={{ per_page }}&page={{ page_obj.next_page_number }}">Proxima</a>
+                {% endif %}
+            </div>
+        </div>
+    {% else %}
+        <p class="empty-state">Nenhum fundo encontrado com os filtros atuais.</p>
+    {% endif %}
+</section>
+{% endblock %}

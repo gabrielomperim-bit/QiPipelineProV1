@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Visao geral{% endblock %}
+{% block title %}Visao geral | QITech{% endblock %}
 {% block page_title %}Visao geral{% endblock %}
 
 {% block content %}
@@ -28,65 +28,6 @@
             <strong>{{ metrics.total_revenue }}</strong>
         </article>
     </div>
-</section>
-
-<section class="content-card">
-    <div class="section-header">
-        <div>
-            <p class="eyebrow">Onboarding</p>
-            <h2>Proximos passos sugeridos</h2>
-        </div>
-        {% if cvm_metadata %}
-            <a class="button-link" href="{% url 'clientes_qi_descobertos' %}">Descobrir clientes via Qi</a>
-        {% else %}
-            <a class="button-link" href="{% url 'sincronizar_cvm' %}">Sincronizar CVM</a>
-        {% endif %}
-    </div>
-
-    {% if not cvm_metadata %}
-        <p class="empty-state">Passo 1: sincronize a base da CVM para habilitar a descoberta automatica dos clientes com fundos ligados a Qi.</p>
-    {% else %}
-        <div class="metrics-grid">
-            <article class="metric-card">
-                <span>Base CVM</span>
-                <strong>Pronta</strong>
-            </article>
-            <article class="metric-card">
-                <span>Clientes sugeridos</span>
-                <strong>{{ qi_candidates_preview|length }}</strong>
-            </article>
-            <article class="metric-card">
-                <span>Proximo objetivo</span>
-                <strong>Importar clientes Qi</strong>
-            </article>
-        </div>
-        {% if qi_candidates_preview %}
-            <div class="table-wrapper">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Cliente sugerido</th>
-                            <th>Categoria</th>
-                            <th>Fundos encontrados</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for candidate in qi_candidates_preview %}
-                            <tr>
-                                <td>{{ candidate.name }}</td>
-                                <td>{{ candidate.category }}</td>
-                                <td>{{ candidate.fund_count }}</td>
-                                <td>{% if candidate.already_exists %}Ja cadastrado{% else %}Pendente{% endif %}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% else %}
-            <p class="empty-state">Nenhum cliente sugerido ainda. Isso pode acontecer antes da sincronizacao ou quando a base local precisa ser atualizada.</p>
-        {% endif %}
-    {% endif %}
 </section>
 
 <section class="content-card">

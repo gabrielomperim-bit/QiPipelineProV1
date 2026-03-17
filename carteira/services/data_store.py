@@ -1,4 +1,6 @@
 import csv
+import re
+import unicodedata
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
@@ -31,10 +33,13 @@ FUND_FIELDS = [
     "pl",
     "monthly_revenue",
     "product_type",
+    "fund_type_raw",
     "annual_fee_rate",
     "manager_name",
     "administrator_name",
     "status",
+    "is_user_fund",
+    "regulation_url",
     "revenue_formula",
     "revenue_source",
     "updated_at",
@@ -135,6 +140,46 @@ def ensure_storage() -> None:
     _ensure_csv(_company_profiles_path(), COMPANY_PROFILE_FIELDS)
 
 
+def reset_storage(clear_cvm_cache: bool = False, clear_uploads: bool = True) -> dict[str, object]:
+    ensure_storage()
+
+    _write_empty_csv(_clients_path(), CLIENT_FIELDS)
+    _write_empty_csv(_funds_path(), FUND_FIELDS)
+    _write_empty_csv(_rules_path(), RULE_FIELDS)
+    _write_empty_csv(_contacts_path(), CONTACT_FIELDS)
+    _write_empty_csv(_company_profiles_path(), COMPANY_PROFILE_FIELDS)
+
+    removed_uploads = 0
+    if clear_uploads:
+        upload_dir = Path(settings.UPLOAD_DIR)
+        for path in upload_dir.iterdir():
+            if path.is_file():
+                path.unlink()
+                removed_uploads += 1
+
+    removed_cvm_files = 0
+    if clear_cvm_cache:
+        cvm_dir = Path(settings.CVM_CACHE_DIR)
+        if cvm_dir.exists():
+            for path in cvm_dir.iterdir():
+                if path.is_file():
+                    path.unlink()
+                    removed_cvm_files += 1
+
+    return {
+        "cleared_files": [
+            str(_clients_path().name),
+            str(_funds_path().name),
+            str(_rules_path().name),
+            str(_contacts_path().name),
+            str(_company_profiles_path().name),
+        ],
+        "removed_uploads": removed_uploads,
+        "removed_cvm_files": removed_cvm_files,
+        "clear_cvm_cache": clear_cvm_cache,
+    }
+
+
 def _ensure_csv(path: Path, fieldnames: list[str]) -> None:
     if path.exists():
         with path.open("r", newline="", encoding="utf-8") as file_handle:
@@ -145,12 +190,23 @@ def _ensure_csv(path: Path, fieldnames: list[str]) -> None:
             return
         migrated_rows = []
         for row in rows:
-            migrated_rows.append({field: row.get(field, "") for field in fieldnames})
+            migrated_rows.append(
+                {
+                    field: _default_field_value(field, row.get(field, ""))
+                    for field in fieldnames
+                }
+            )
         with path.open("w", newline="", encoding="utf-8") as file_handle:
             writer = csv.DictWriter(file_handle, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(migrated_rows)
         return
+    with path.open("w", newline="", encoding="utf-8") as file_handle:
+        writer = csv.DictWriter(file_handle, fieldnames=fieldnames)
+        writer.writeheader()
+
+
+def _write_empty_csv(path: Path, fieldnames: list[str]) -> None:
     with path.open("w", newline="", encoding="utf-8") as file_handle:
         writer = csv.DictWriter(file_handle, fieldnames=fieldnames)
         writer.writeheader()
@@ -226,6 +282,28 @@ def save_company_profiles(rows: Iterable[dict[str, str]]) -> None:
         writer.writerows(rows)
 
 
+def refresh_linked_funds_from_catalog(catalog_rows: list[dict[str, str]]) -> None:
+    funds = load_funds()
+    index_by_class_id = {row.get("cvm_class_id", ""): row for row in catalog_rows if row.get("cvm_class_id", "")}
+    index_by_cnpj = {row.get("cnpj", ""): row for row in catalog_rows if row.get("cnpj", "")}
+    changed = False
+
+    for fund in funds:
+        catalog_row = index_by_class_id.get(fund.get("cvm_class_id", "")) or index_by_cnpj.get(fund.get("cnpj", ""))
+        if not catalog_row:
+            continue
+        fund["product_type"] = normalize_fund_type(catalog_row.get("product_type", fund.get("product_type", "")))
+        fund["fund_type_raw"] = _as_clean_string(catalog_row.get("product_type", fund.get("fund_type_raw", "")))
+        fund["manager_name"] = _as_clean_string(catalog_row.get("manager_name", fund.get("manager_name", "")))
+        fund["administrator_name"] = _as_clean_string(catalog_row.get("administrator_name", fund.get("administrator_name", "")))
+        fund["status"] = _as_clean_string(catalog_row.get("status", fund.get("status", "")))
+        fund["regulation_url"] = _regulation_url_or_default(catalog_row.get("regulation_url", fund.get("regulation_url", "")))
+        changed = True
+
+    if changed:
+        save_funds(funds)
+
+
 def add_client(payload: dict[str, str]) -> dict[str, str]:
     clients = load_clients()
     now = _now_iso()
@@ -291,6 +369,65 @@ def delete_client(client_id: str) -> None:
     save_company_profiles(profiles)
 
 
+def delete_rule(product_type: str) -> None:
+    normalized_type = normalize_fund_type(product_type)
+    rules = [rule for rule in load_rules() if normalize_fund_type(rule["product_type"]) != normalized_type]
+    save_rules(rules)
+
+
+def set_fund_user_status(fund_id: str, is_user_fund: bool) -> None:
+    funds = load_funds()
+    target_client_id = ""
+    for fund in funds:
+        if fund["id"] != fund_id:
+            continue
+        fund["is_user_fund"] = "1" if is_user_fund else "0"
+        fund["updated_at"] = _now_iso()
+        target_client_id = fund["client_id"]
+        break
+    save_funds(funds)
+    if target_client_id:
+        refresh_client_revenue(target_client_id)
+
+
+def list_client_choices() -> list[tuple[str, str]]:
+    return [(client["id"], client["name"]) for client in sorted(load_clients(), key=lambda item: item["name"].lower())]
+
+
+def list_all_linked_funds(search_term: str = "") -> list[dict[str, str]]:
+    clients_by_id = {client["id"]: client for client in load_clients()}
+    query = _normalize_search_text(search_term)
+    results = []
+    for fund in load_funds():
+        client_name = clients_by_id.get(fund["client_id"], {}).get("name", "")
+        client_name = client_name or "Cliente nao identificado"
+        row = {
+            **fund,
+            "client_name": client_name,
+            "has_client": fund["client_id"] in clients_by_id,
+            "product_type": normalize_fund_type(fund.get("product_type", "")),
+            "formatted_pl": format_currency(parse_decimal(fund["pl"])) if fund.get("pl") else "-",
+            "formatted_revenue": format_currency(parse_decimal(fund["monthly_revenue"])),
+            "is_user_fund_bool": _is_truthy(fund.get("is_user_fund", "0")),
+            "regulation_url": _regulation_url_or_default(fund.get("regulation_url", "")),
+        }
+        haystack = _normalize_search_text(
+            " ".join(
+                [
+                    row.get("fund_name", ""),
+                    row.get("client_name", ""),
+                    row.get("cnpj", ""),
+                    format_cnpj(row.get("cnpj", "")),
+                    row.get("product_type", ""),
+                ]
+            )
+        )
+        if query and query not in haystack:
+            continue
+        results.append(row)
+    return sorted(results, key=lambda item: (item["client_name"].lower(), item["fund_name"].lower()))
+
+
 def group_clients_by_category() -> list[dict[str, object]]:
     grouped = {key: [] for key in CATEGORY_LABELS}
     for client in load_clients():
@@ -346,14 +483,18 @@ def get_client(client_id: str) -> dict[str, object] | None:
         "category_label": CATEGORY_LABELS.get(client["category"], client["category"]),
         "formatted_company_cnpj": format_cnpj(client.get("company_cnpj", "")),
         "formatted_revenue": format_currency(parse_decimal(client["monthly_revenue"])),
+        "user_fund_count": len([fund for fund in client_funds if _is_truthy(fund.get("is_user_fund", "0"))]),
         "funds": [
             {
                 **fund,
+                "product_type": normalize_fund_type(fund.get("product_type", "")),
                 "formatted_pl": format_currency(parse_decimal(fund["pl"])) if fund.get("pl") else "-",
                 "formatted_revenue": format_currency(parse_decimal(fund["monthly_revenue"])),
                 "formatted_fee_rate": format_percentage(parse_decimal(fund.get("annual_fee_rate", "")))
                 if fund.get("annual_fee_rate", "").strip()
                 else "-",
+                "is_user_fund_bool": _is_truthy(fund.get("is_user_fund", "0")),
+                "regulation_url": _regulation_url_or_default(fund.get("regulation_url", "")),
             }
             for fund in client_funds
         ],
@@ -442,7 +583,8 @@ def upsert_company_profile(payload: dict[str, str]) -> dict[str, str]:
 
 def add_fund(payload: dict[str, str]) -> dict[str, str]:
     funds = load_funds()
-    rule = get_rule_for_product_type(payload.get("product_type", ""))
+    normalized_fund_type = normalize_fund_type(payload.get("product_type", ""))
+    rule = get_rule_for_product_type(normalized_fund_type)
     annual_fee_rate = payload.get("annual_fee_rate", "").strip() or (rule.get("annual_fee_rate", "") if rule else "")
     monthly_revenue = payload.get("monthly_revenue", "").strip()
     revenue_formula = payload.get("revenue_formula", "").strip()
@@ -471,11 +613,14 @@ def add_fund(payload: dict[str, str]) -> dict[str, str]:
                 "cnpj": payload["cnpj"].strip(),
                 "pl": payload.get("pl", "").strip(),
                 "monthly_revenue": monthly_revenue or existing.get("monthly_revenue", ""),
-                "product_type": payload.get("product_type", "").strip(),
+                "product_type": normalized_fund_type,
+                "fund_type_raw": _as_clean_string(payload.get("product_type")),
                 "annual_fee_rate": annual_fee_rate,
                 "manager_name": payload.get("manager_name", "").strip(),
                 "administrator_name": payload.get("administrator_name", "").strip(),
                 "status": payload.get("status", "").strip(),
+                "is_user_fund": _default_field_value("is_user_fund", payload.get("is_user_fund", existing.get("is_user_fund", "0"))),
+                "regulation_url": _regulation_url_or_default(payload.get("regulation_url", existing.get("regulation_url", ""))),
                 "revenue_formula": revenue_formula or existing.get("revenue_formula", ""),
                 "revenue_source": revenue_source or existing.get("revenue_source", ""),
                 "updated_at": now,
@@ -494,11 +639,14 @@ def add_fund(payload: dict[str, str]) -> dict[str, str]:
         "cnpj": payload["cnpj"].strip(),
         "pl": payload.get("pl", "").strip(),
         "monthly_revenue": monthly_revenue,
-        "product_type": payload.get("product_type", "").strip(),
+        "product_type": normalized_fund_type,
+        "fund_type_raw": _as_clean_string(payload.get("product_type")),
         "annual_fee_rate": annual_fee_rate,
         "manager_name": payload.get("manager_name", "").strip(),
         "administrator_name": payload.get("administrator_name", "").strip(),
         "status": payload.get("status", "").strip(),
+        "is_user_fund": _default_field_value("is_user_fund", payload.get("is_user_fund", "0")),
+        "regulation_url": _regulation_url_or_default(payload.get("regulation_url")),
         "revenue_formula": revenue_formula,
         "revenue_source": revenue_source,
         "updated_at": now,
@@ -511,7 +659,7 @@ def add_fund(payload: dict[str, str]) -> dict[str, str]:
 
 def upsert_rule(product_type: str, annual_fee_rate: str, notes: str = "") -> dict[str, str]:
     rules = load_rules()
-    normalized_type = product_type.strip()
+    normalized_type = normalize_fund_type(product_type)
     now = _now_iso()
     existing = next((rule for rule in rules if rule["product_type"].strip().lower() == normalized_type.lower()), None)
     if existing:
@@ -533,7 +681,7 @@ def upsert_rule(product_type: str, annual_fee_rate: str, notes: str = "") -> dic
 
 
 def get_rule_for_product_type(product_type: str) -> dict[str, str] | None:
-    normalized_type = product_type.strip().lower()
+    normalized_type = normalize_fund_type(product_type).lower()
     if not normalized_type:
         return None
     return next((rule for rule in load_rules() if rule["product_type"].strip().lower() == normalized_type), None)
@@ -545,29 +693,31 @@ def list_rules() -> list[dict[str, str]]:
 
 def list_known_product_types() -> list[str]:
     product_types = {
-        fund["product_type"].strip()
+        normalize_fund_type(fund["product_type"])
         for fund in load_funds()
         if fund.get("product_type", "").strip()
     }
     for rule in load_rules():
         if rule["product_type"].strip():
-            product_types.add(rule["product_type"].strip())
+            product_types.add(normalize_fund_type(rule["product_type"]))
     return sorted(product_types)
 
 
 def recalculate_funds_for_product_type(product_type: str) -> None:
-    rule = get_rule_for_product_type(product_type)
+    normalized_type = normalize_fund_type(product_type)
+    rule = get_rule_for_product_type(normalized_type)
     if not rule:
         return
     funds = load_funds()
     impacted_clients: set[str] = set()
     for fund in funds:
-        if fund.get("product_type", "").strip().lower() != product_type.strip().lower():
+        if normalize_fund_type(fund.get("product_type", "")).lower() != normalized_type.lower():
             continue
+        fund["product_type"] = normalized_type
         fund["annual_fee_rate"] = rule["annual_fee_rate"]
         fund["monthly_revenue"] = format_decimal_value(calculate_monthly_revenue(fund.get("pl", ""), rule["annual_fee_rate"]))
         fund["revenue_formula"] = "PL x taxa anual / 12"
-        fund["revenue_source"] = f"Calculado por regra do tipo {rule['product_type']}"
+        fund["revenue_source"] = f"Calculado por regra do tipo {normalized_type}"
         fund["updated_at"] = _now_iso()
         impacted_clients.add(fund["client_id"])
     save_funds(funds)
@@ -597,6 +747,7 @@ def refresh_client_revenue(client_id: str) -> None:
     funds = load_funds()
     client_funds = [fund for fund in funds if fund["client_id"] == client_id]
     if not client_funds:
+        update_client_revenue(client_id, Decimal("0"), "Nenhum fundo vinculado")
         return
     total = sum(
         (parse_decimal(fund.get("monthly_revenue", "")) for fund in client_funds),
@@ -657,3 +808,42 @@ def format_cnpj(value: str) -> str:
     if len(digits) != 14:
         return str(value or "").strip()
     return f"{digits[:2]}.{digits[2:5]}.{digits[5:8]}/{digits[8:12]}-{digits[12:]}"
+
+
+def normalize_fund_type(value: str) -> str:
+    normalized = _as_clean_string(value)
+    if not normalized:
+        return ""
+    match = re.search(r"\b(FII|FIDC|FIP|FIA|FIF|ETF|FIM|FIC|FIRF|FICFIM|FICFIA)\b$", normalized.upper())
+    if match:
+        return match.group(1)
+    tokens = re.findall(r"[A-Z]{2,}", normalized.upper())
+    return tokens[-1] if tokens else normalized.upper()
+
+
+def _default_field_value(field: str, value: object) -> str:
+    if field == "is_user_fund":
+        cleaned = _as_clean_string(value)
+        return cleaned if cleaned else "0"
+    return _as_clean_string(value)
+
+
+def _is_truthy(value: object) -> bool:
+    return _as_clean_string(value).lower() in {"1", "true", "sim", "yes", "y", "on"}
+
+
+def _regulation_url_or_default(value: object) -> str:
+    cleaned = _as_clean_string(value)
+    if cleaned:
+        return cleaned
+    return "https://cvmweb.cvm.gov.br/SWB/default.asp?sg_sistema=fundosreg"
+
+
+def _normalize_search_text(value: object) -> str:
+    cleaned = _as_clean_string(value).lower()
+    if not cleaned:
+        return ""
+    normalized = unicodedata.normalize("NFKD", cleaned)
+    ascii_only = "".join(char for char in normalized if not unicodedata.combining(char))
+    collapsed = re.sub(r"\s+", " ", ascii_only)
+    return collapsed.strip()

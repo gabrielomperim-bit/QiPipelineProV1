@@ -10,11 +10,22 @@ from urllib.request import urlopen
 
 from django.conf import settings
 
-from .data_store import add_client, add_fund, get_client_by_name, update_client_company_identity
+from .data_store import (
+    add_client,
+    add_fund,
+    format_cnpj,
+    format_currency,
+    get_client_by_name,
+    normalize_fund_type,
+    parse_decimal,
+    refresh_linked_funds_from_catalog,
+    update_client_company_identity,
+)
 
 
 CADASTRO_URL = "https://dados.cvm.gov.br/dados/FI/CAD/DADOS/registro_fundo_classe.zip"
 INF_DIARIO_URL_TEMPLATE = "https://dados.cvm.gov.br/dados/FI/DOC/INF_DIARIO/DADOS/inf_diario_fi_{year_month}.zip"
+EVENTUAL_URL_TEMPLATE = "https://dados.cvm.gov.br/dados/FI/DOC/EVENTUAL/DADOS/eventual_fi_{year}.csv"
 
 
 @dataclass
@@ -63,10 +74,13 @@ def sync_cvm_data() -> CVMSyncResult:
     )
     downloaded_files.append("latest_pl.csv")
 
+    regulation_index = _build_regulation_index(cache_dir)
+
     catalog_rows = _build_catalog_rows(
         _load_semicolon_csv(cache_dir / "registro_fundo.csv"),
         _load_semicolon_csv(cache_dir / "registro_classe.csv"),
         latest_pl,
+        regulation_index,
     )
     _write_semicolon_csv(
         cache_dir / "catalog.csv",
@@ -89,11 +103,13 @@ def sync_cvm_data() -> CVMSyncResult:
             "controller_name",
             "controller_document",
             "fund_legal_name",
+            "regulation_url",
             "qi_relationship_role",
         ],
         catalog_rows,
     )
     downloaded_files.append("catalog.csv")
+    refresh_linked_funds_from_catalog(catalog_rows)
 
     metadata = {
         "imported_at": datetime.now().isoformat(timespec="seconds"),
@@ -165,7 +181,7 @@ def discover_qi_client_candidates(limit: int = 300) -> list[dict[str, object]]:
                 "already_exists": False,
             },
         )
-        bucket["relationship_roles"].add(record.get("qi_relationship_role", "") or "Relacionamento Qi")
+        bucket["relationship_roles"].add(record.get("qi_relationship_role", "") or "Relacionamento QITech")
         bucket["fund_count"] += 1
         bucket["pl_total"] = str(_sum_decimal_strings(bucket["pl_total"], record.get("pl", "")))
         bucket["funds"].append(record)
@@ -177,6 +193,19 @@ def discover_qi_client_candidates(limit: int = 300) -> list[dict[str, object]]:
         item["existing_client_id"] = existing["id"] if existing else ""
         if existing:
             item["company_cnpj"] = existing.get("company_cnpj", "") or item.get("company_cnpj", "")
+        item["funds"] = sorted(
+            [
+                {
+                    **fund,
+                    "cnpj": format_cnpj(fund.get("cnpj", "")),
+                    "formatted_pl": format_currency(parse_decimal(fund.get("pl", ""))),
+                    "product_type": normalize_fund_type(fund.get("product_type", "")),
+                    "regulation_url": fund.get("regulation_url", "") or "https://cvmweb.cvm.gov.br/SWB/default.asp?sg_sistema=fundosreg",
+                }
+                for fund in item["funds"]
+            ],
+            key=lambda fund: str(fund.get("fund_name", "")).lower(),
+        )
         item["relationship_roles"] = ", ".join(
             sorted(role for role in item["relationship_roles"] if str(role).strip())
         )
@@ -204,7 +233,7 @@ def import_qi_client_candidate(client_name: str) -> dict[str, object] | None:
                 "company_cnpj_source": candidate.get("company_cnpj_source", ""),
                 "monthly_revenue": "",
                 "monthly_revenue_source": "",
-                "notes": f"Cliente descoberto automaticamente via base CVM. Relacao com Qi: {candidate['relationship_roles']}.",
+                "notes": f"Cliente descoberto automaticamente via base CVM. Relacao com QITech: {candidate['relationship_roles']}.",
             }
         )
     elif candidate.get("company_cnpj") and not client.get("company_cnpj"):
@@ -228,6 +257,8 @@ def import_qi_client_candidate(client_name: str) -> dict[str, object] | None:
                 "administrator_name": fund.get("administrator_name", ""),
                 "status": fund.get("status", ""),
                 "revenue_source": "CVM Dados Abertos",
+                "regulation_url": fund.get("regulation_url", ""),
+                "is_user_fund": "0",
             }
         )
 
@@ -335,9 +366,18 @@ def _build_catalog_rows(
     fund_rows: list[dict[str, str]],
     class_rows: list[dict[str, str]],
     latest_pl: dict[str, dict[str, str]],
+    regulation_index: dict[str, str],
 ) -> list[dict[str, str]]:
     fund_index = {row["ID_Registro_Fundo"]: row for row in fund_rows}
-    return [_build_catalog_record(fund_index.get(class_row["ID_Registro_Fundo"], {}), class_row, latest_pl) for class_row in class_rows]
+    return [
+        _build_catalog_record(
+            fund_index.get(class_row["ID_Registro_Fundo"], {}),
+            class_row,
+            latest_pl,
+            regulation_index,
+        )
+        for class_row in class_rows
+    ]
 
 
 def _write_semicolon_csv(path: Path, headers: list[str], rows: list[dict[str, str]]) -> None:
@@ -351,6 +391,7 @@ def _build_catalog_record(
     fund_row: dict[str, str],
     class_row: dict[str, str],
     latest_pl: dict[str, dict[str, str]],
+    regulation_index: dict[str, str],
 ) -> dict[str, str]:
     cnpj = _digits_only(class_row.get("CNPJ_Classe", ""))
     daily_row = latest_pl.get(cnpj, {})
@@ -367,7 +408,7 @@ def _build_catalog_record(
         "raw_cnpj": cnpj,
         "pl": pl,
         "pl_date": daily_row.get("DT_COMPTC") or class_row.get("Data_Patrimonio_Liquido", ""),
-        "product_type": class_row.get("Tipo_Classe", ""),
+        "product_type": normalize_fund_type(class_row.get("Tipo_Classe", "")),
         "status": class_row.get("Situacao", ""),
         "manager_name": fund_row.get("Gestor", ""),
         "manager_document": _format_cnpj(manager_document),
@@ -378,6 +419,7 @@ def _build_catalog_record(
         "controller_name": class_row.get("Controlador", ""),
         "controller_document": _format_cnpj(controller_document),
         "fund_legal_name": fund_row.get("Denominacao_Social", ""),
+        "regulation_url": regulation_index.get(cnpj, "https://cvmweb.cvm.gov.br/SWB/default.asp?sg_sistema=fundosreg"),
         "qi_relationship_role": _detect_qi_relationship_role(
             manager_document,
             administrator_document,
@@ -442,7 +484,7 @@ def _detect_qi_relationship_role(
 ) -> str:
     qi_documents = set(settings.QITECH_ENTITY_CNPJS)
     candidates = [
-        ("Gestor", manager_document, manager_name),
+        ("Consultoria", manager_document, manager_name),
         ("Administrador", administrator_document, administrator_name),
         ("Custodiante", custodian_document, custodian_name),
         ("Controlador", controller_document, controller_name),
@@ -458,7 +500,7 @@ def _detect_qi_relationship_role(
 
 def _extract_client_candidate(record: dict[str, str]) -> dict[str, str] | None:
     candidates = [
-        ("gestora", record.get("manager_name", ""), record.get("manager_document", ""), "Gestor"),
+        ("gestora", record.get("manager_name", ""), record.get("manager_document", ""), "Consultoria"),
         ("outros", record.get("administrator_name", ""), record.get("administrator_document", ""), "Administrador"),
         ("outros", record.get("controller_name", ""), record.get("controller_document", ""), "Controlador"),
         ("outros", record.get("custodian_name", ""), record.get("custodian_document", ""), "Custodiante"),
@@ -493,6 +535,31 @@ def _guess_client_category(name: str, fallback: str) -> str:
     if any(token in upper_name for token in ["ASSET", "GEST", "CAPITAL", "MANAGEMENT"]):
         return "gestora"
     return fallback
+
+
+def _build_regulation_index(cache_dir: Path) -> dict[str, str]:
+    years = [date.today().year, date.today().year - 1]
+    latest_by_cnpj: dict[str, tuple[str, str]] = {}
+    for year in years:
+        try:
+            raw = _download_bytes(EVENTUAL_URL_TEMPLATE.format(year=year))
+        except Exception:
+            continue
+        target = cache_dir / f"eventual_fi_{year}.csv"
+        target.write_bytes(raw)
+        rows = _load_semicolon_csv(target)
+        for row in rows:
+            if row.get("TP_DOC", "") != "REGUL FDO":
+                continue
+            cnpj = _digits_only(row.get("CNPJ_FUNDO_CLASSE", ""))
+            link = row.get("LINK_ARQ", "")
+            if not cnpj or not link:
+                continue
+            received_at = row.get("DT_RECEB", "") or row.get("DT_COMPTC", "")
+            previous = latest_by_cnpj.get(cnpj)
+            if previous is None or received_at >= previous[0]:
+                latest_by_cnpj[cnpj] = (received_at, link)
+    return {cnpj: link for cnpj, (_, link) in latest_by_cnpj.items()}
 
 
 def _sum_decimal_strings(left: str, right: str) -> Decimal:
