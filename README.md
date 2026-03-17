@@ -39,6 +39,7 @@ Colunas sugeridas:
 - `fonte_receita`
 - `observacoes`
 
+
 ## Como rodar localmente
 
 ```powershell

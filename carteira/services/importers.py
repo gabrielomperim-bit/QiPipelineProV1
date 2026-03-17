@@ -15,10 +15,10 @@ CATEGORY_ALIASES = {
 }
 
 NAME_HEADERS = {"cliente", "nome", "empresa", "conta"}
-CATEGORY_HEADERS = {"categoria", "tipo", "classificacao", "classificação"}
+CATEGORY_HEADERS = {"categoria", "tipo", "classificacao", "classificaÃ§Ã£o"}
 REVENUE_HEADERS = {"receita_mensal", "receita mensal", "receita"}
 SOURCE_HEADERS = {"fonte_receita", "fonte", "origem_receita"}
-NOTES_HEADERS = {"observacoes", "observações", "notas"}
+NOTES_HEADERS = {"observacoes", "observaÃ§Ãµes", "notas"}
 
 
 def import_clients_from_file(path: Path) -> ImportSummary:
@@ -134,4 +134,3 @@ def _find_first_value(mapped: dict[str, str], options: set[str]) -> str:
 
 def _normalize_header(value: str) -> str:
     return str(value).strip().lower().replace("-", "_")
-

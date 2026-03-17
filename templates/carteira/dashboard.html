@@ -59,6 +59,7 @@
                                 <th>Cliente</th>
                                 <th>Receita mensal</th>
                                 <th>Fonte</th>
+                                <th>Categoria</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -67,6 +68,16 @@
                                     <td><a href="{% url 'detalhe_cliente' client.id %}">{{ client.name }}</a></td>
                                     <td>{{ client.monthly_revenue|default:"-" }}</td>
                                     <td>{{ client.monthly_revenue_source|default:"-" }}</td>
+                                    <td>
+                                        <form method="post" action="{% url 'atualizar_categoria_cliente' client.id %}" class="inline-form compact-form category-form">
+                                            {% csrf_token %}
+                                            <select name="category" onchange="this.form.submit()">
+                                                {% for value, label in category_choices %}
+                                                    <option value="{{ value }}" {% if client.category == value %}selected{% endif %}>{{ label }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </form>
+                                    </td>
                                 </tr>
                             {% endfor %}
                         </tbody>

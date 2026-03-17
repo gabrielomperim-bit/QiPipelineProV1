@@ -14,6 +14,7 @@ CLIENT_FIELDS = [
     "id",
     "name",
     "category",
+    "is_user_client",
     "company_cnpj",
     "company_cnpj_source",
     "monthly_revenue",
@@ -311,6 +312,7 @@ def add_client(payload: dict[str, str]) -> dict[str, str]:
         "id": uuid.uuid4().hex,
         "name": payload["name"].strip(),
         "category": payload["category"],
+        "is_user_client": _default_field_value("is_user_client", payload.get("is_user_client", "0")),
         "company_cnpj": _as_clean_string(payload.get("company_cnpj")),
         "company_cnpj_source": _as_clean_string(payload.get("company_cnpj_source")),
         "monthly_revenue": payload.get("monthly_revenue", "").strip(),
@@ -358,6 +360,31 @@ def update_client_company_identity(client_id: str, company_cnpj: str, company_cn
     save_clients(clients)
 
 
+def update_client_category(client_id: str, category: str) -> None:
+    normalized_category = _as_clean_string(category).lower()
+    if normalized_category not in CATEGORY_LABELS:
+        return
+    clients = load_clients()
+    for client in clients:
+        if client["id"] != client_id:
+            continue
+        client["category"] = normalized_category
+        client["updated_at"] = _now_iso()
+        break
+    save_clients(clients)
+
+
+def set_client_user_status(client_id: str, is_user_client: bool) -> None:
+    clients = load_clients()
+    for client in clients:
+        if client["id"] != client_id:
+            continue
+        client["is_user_client"] = "1" if is_user_client else "0"
+        client["updated_at"] = _now_iso()
+        break
+    save_clients(clients)
+
+
 def delete_client(client_id: str) -> None:
     clients = [client for client in load_clients() if client["id"] != client_id]
     funds = [fund for fund in load_funds() if fund["client_id"] != client_id]
@@ -394,11 +421,54 @@ def list_client_choices() -> list[tuple[str, str]]:
     return [(client["id"], client["name"]) for client in sorted(load_clients(), key=lambda item: item["name"].lower())]
 
 
+def list_category_choices() -> list[tuple[str, str]]:
+    return list(CATEGORY_LABELS.items())
+
+
+def list_clients_overview(search_term: str = "") -> list[dict[str, str]]:
+    clients = load_clients()
+    funds = load_funds()
+    fund_count_by_client: dict[str, int] = {}
+    for fund in funds:
+        client_id = fund.get("client_id", "")
+        if not client_id:
+            continue
+        fund_count_by_client[client_id] = fund_count_by_client.get(client_id, 0) + 1
+
+    query = _normalize_search_text(search_term)
+    results = []
+    for client in clients:
+        row = {
+            **client,
+            "category_label": CATEGORY_LABELS.get(client.get("category", ""), client.get("category", "")),
+            "formatted_company_cnpj": format_cnpj(client.get("company_cnpj", "")),
+            "formatted_revenue": format_currency(parse_decimal(client.get("monthly_revenue", ""))),
+            "fund_count": fund_count_by_client.get(client.get("id", ""), 0),
+            "is_user_client_bool": _is_truthy(client.get("is_user_client", "0")),
+        }
+        haystack = _normalize_search_text(
+            " ".join(
+                [
+                    row.get("name", ""),
+                    row.get("category_label", ""),
+                    row.get("company_cnpj", ""),
+                    row.get("formatted_company_cnpj", ""),
+                ]
+            )
+        )
+        if query and query not in haystack:
+            continue
+        results.append(row)
+    return sorted(results, key=lambda item: item.get("name", "").lower())
+
+
 def list_all_linked_funds(search_term: str = "") -> list[dict[str, str]]:
     clients_by_id = {client["id"]: client for client in load_clients()}
+    catalog_by_class_id, catalog_by_cnpj = _load_cvm_catalog_indexes()
     query = _normalize_search_text(search_term)
     results = []
     for fund in load_funds():
+        catalog_row = _catalog_match_for_fund(fund, catalog_by_class_id, catalog_by_cnpj)
         client_name = clients_by_id.get(fund["client_id"], {}).get("name", "")
         client_name = client_name or "Cliente nao identificado"
         row = {
@@ -410,6 +480,8 @@ def list_all_linked_funds(search_term: str = "") -> list[dict[str, str]]:
             "formatted_revenue": format_currency(parse_decimal(fund["monthly_revenue"])),
             "is_user_fund_bool": _is_truthy(fund.get("is_user_fund", "0")),
             "regulation_url": _regulation_url_or_default(fund.get("regulation_url", "")),
+            "manager_name": _as_clean_string(fund.get("manager_name")) or (_as_clean_string(catalog_row.get("manager_name")) if catalog_row else ""),
+            "administrator_name": _as_clean_string(fund.get("administrator_name")) or (_as_clean_string(catalog_row.get("administrator_name")) if catalog_row else ""),
         }
         haystack = _normalize_search_text(
             " ".join(
@@ -472,6 +544,7 @@ def get_client(client_id: str) -> dict[str, object] | None:
     funds = load_funds()
     contacts = load_contacts()
     profiles = load_company_profiles()
+    catalog_by_class_id, catalog_by_cnpj = _load_cvm_catalog_indexes()
     client = next((item for item in clients if item["id"] == client_id), None)
     if not client:
         return None
@@ -485,7 +558,8 @@ def get_client(client_id: str) -> dict[str, object] | None:
         "formatted_revenue": format_currency(parse_decimal(client["monthly_revenue"])),
         "user_fund_count": len([fund for fund in client_funds if _is_truthy(fund.get("is_user_fund", "0"))]),
         "funds": [
-            {
+            (
+                lambda catalog_row: {
                 **fund,
                 "product_type": normalize_fund_type(fund.get("product_type", "")),
                 "formatted_pl": format_currency(parse_decimal(fund["pl"])) if fund.get("pl") else "-",
@@ -495,7 +569,10 @@ def get_client(client_id: str) -> dict[str, object] | None:
                 else "-",
                 "is_user_fund_bool": _is_truthy(fund.get("is_user_fund", "0")),
                 "regulation_url": _regulation_url_or_default(fund.get("regulation_url", "")),
+                "manager_name": _as_clean_string(fund.get("manager_name")) or (_as_clean_string(catalog_row.get("manager_name")) if catalog_row else ""),
+                "administrator_name": _as_clean_string(fund.get("administrator_name")) or (_as_clean_string(catalog_row.get("administrator_name")) if catalog_row else ""),
             }
+            )(_catalog_match_for_fund(fund, catalog_by_class_id, catalog_by_cnpj))
             for fund in client_funds
         ],
         "contacts": [
@@ -804,7 +881,7 @@ def _as_clean_string(value: object) -> str:
 
 
 def format_cnpj(value: str) -> str:
-    digits = "".join(char for char in str(value) if char.isdigit())
+    digits = _digits_only(value)
     if len(digits) != 14:
         return str(value or "").strip()
     return f"{digits[:2]}.{digits[2:5]}.{digits[5:8]}/{digits[8:12]}-{digits[12:]}"
@@ -822,7 +899,7 @@ def normalize_fund_type(value: str) -> str:
 
 
 def _default_field_value(field: str, value: object) -> str:
-    if field == "is_user_fund":
+    if field in {"is_user_fund", "is_user_client"}:
         cleaned = _as_clean_string(value)
         return cleaned if cleaned else "0"
     return _as_clean_string(value)
@@ -839,6 +916,28 @@ def _regulation_url_or_default(value: object) -> str:
     return "https://cvmweb.cvm.gov.br/SWB/default.asp?sg_sistema=fundosreg"
 
 
+def _load_cvm_catalog_indexes() -> tuple[dict[str, dict[str, str]], dict[str, dict[str, str]]]:
+    catalog_path = Path(settings.CVM_CACHE_DIR) / "catalog.csv"
+    if not catalog_path.exists():
+        return {}, {}
+    with catalog_path.open("r", newline="", encoding="utf-8") as file_handle:
+        rows = list(csv.DictReader(file_handle, delimiter=";"))
+    by_class_id = {row.get("cvm_class_id", ""): row for row in rows if row.get("cvm_class_id", "")}
+    by_cnpj = {_digits_only(row.get("cnpj", "")): row for row in rows if row.get("cnpj", "")}
+    return by_class_id, by_cnpj
+
+
+def _catalog_match_for_fund(
+    fund: dict[str, str],
+    catalog_by_class_id: dict[str, dict[str, str]],
+    catalog_by_cnpj: dict[str, dict[str, str]],
+) -> dict[str, str] | None:
+    return (
+        catalog_by_class_id.get(_as_clean_string(fund.get("cvm_class_id")))
+        or catalog_by_cnpj.get(_digits_only(fund.get("cnpj", "")))
+    )
+
+
 def _normalize_search_text(value: object) -> str:
     cleaned = _as_clean_string(value).lower()
     if not cleaned:
@@ -847,3 +946,7 @@ def _normalize_search_text(value: object) -> str:
     ascii_only = "".join(char for char in normalized if not unicodedata.combining(char))
     collapsed = re.sub(r"\s+", " ", ascii_only)
     return collapsed.strip()
+
+
+def _digits_only(value: object) -> str:
+    return "".join(char for char in _as_clean_string(value) if char.isdigit())

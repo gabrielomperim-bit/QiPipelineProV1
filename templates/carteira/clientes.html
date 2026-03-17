@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Clientes | QITech{% endblock %}
+{% block page_title %}Clientes{% endblock %}
+
+{% block content %}
+<section class="content-card">
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">Clientes</p>
+            <h2>Todos os clientes cadastrados</h2>
+        </div>
+        <a class="button-link" href="{% url 'novo_cliente' %}">Cadastrar cliente</a>
+    </div>
+
+    <form method="get" class="stack-form search-box">
+        <p>
+            <label for="consulta">Pesquisar cliente</label>
+            <input type="text" id="consulta" name="consulta" value="{{ search_term }}" placeholder="Busque por nome, categoria ou CNPJ">
+        </p>
+        <button type="submit">Pesquisar</button>
+    </form>
+
+    {% if clients %}
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Categoria</th>
+                        <th>CNPJ</th>
+                        <th>Receita mensal</th>
+                        <th>Fundos</th>
+                        <th>Abrir</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for client in clients %}
+                        <tr>
+                            <td>{{ client.name }}</td>
+                            <td>{{ client.category_label }}</td>
+                            <td>{{ client.formatted_company_cnpj|default:"-" }}</td>
+                            <td>{{ client.formatted_revenue }}</td>
+                            <td>{{ client.fund_count }}</td>
+                            <td><a class="button-link" href="{% url 'detalhe_cliente' client.id %}">Abrir</a></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="empty-state">Nenhum cliente encontrado com os filtros atuais.</p>
+    {% endif %}
+</section>
+{% endblock %}

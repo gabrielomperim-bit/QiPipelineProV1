@@ -5,11 +5,21 @@ from django.http import Http404
 from django.core.paginator import Paginator
 from django.shortcuts import redirect, render
 
-from .forms import ClienteForm, ClienteQiBuscaForm, ContatoForm, FundoBuscaForm, FundoCatalogoBuscaForm, FundoReceitaForm, RegraReceitaForm, UploadCarteiraForm
+from .forms import (
+    ClienteForm,
+    ClienteQiBuscaForm,
+    ContatoForm,
+    FundoBuscaForm,
+    FundoCatalogoBuscaForm,
+    FundoReceitaForm,
+    RegraReceitaForm,
+    UploadCarteiraForm,
+)
 from .services.cvm_sync import (
     discover_qi_client_candidates,
     get_sync_metadata,
     import_qi_client_candidate,
+    list_catalog_funds,
     search_funds,
     sync_cvm_data,
 )
@@ -24,12 +34,15 @@ from .services.data_store import (
     get_client,
     get_client_by_name,
     group_clients_by_category,
-    list_all_linked_funds,
+    list_category_choices,
+    list_clients_overview,
     list_known_product_types,
     list_rules,
     parse_decimal,
     refresh_client_revenue,
+    set_client_user_status,
     set_fund_user_status,
+    update_client_category,
     update_client_company_identity,
     upsert_company_profile,
     upsert_rule,
@@ -39,14 +52,60 @@ from .services.importers import import_clients_from_file
 from .services.public_company import enrich_company_profiles_for_client
 
 
+def _matches_text_filter(value: str, operator: str, filter_value: str) -> bool:
+    normalized_value = " ".join(str(value or "").strip().lower().split())
+    normalized_filter = " ".join(str(filter_value or "").strip().lower().split())
+    if not normalized_filter:
+        return True
+    if operator == "eq":
+        return normalized_value == normalized_filter
+    if operator == "neq":
+        return normalized_value != normalized_filter
+    return normalized_filter in normalized_value
+
+
 def dashboard(request):
     ensure_storage()
     context = {
         "metrics": build_dashboard_metrics(),
         "groups": group_clients_by_category(),
+        "category_choices": list_category_choices(),
         "cvm_metadata": get_sync_metadata(),
     }
     return render(request, "carteira/dashboard.html", context)
+
+
+def lista_clientes(request):
+    ensure_storage()
+    search_term = (request.GET.get("consulta") or "").strip()
+    context = {
+        "clients": list_clients_overview(search_term),
+        "search_term": search_term,
+    }
+    return render(request, "carteira/clientes.html", context)
+
+
+def alternar_cliente_usuario(request, client_id: str):
+    ensure_storage()
+    client = get_client(client_id)
+    if not client:
+        raise Http404("Cliente nao encontrado.")
+    next_url = request.POST.get("next") or request.GET.get("next")
+    if request.method == "POST":
+        set_client_user_status(client_id, request.POST.get("is_user_client", "0") == "1")
+    if next_url:
+        return redirect(next_url)
+    return redirect("lista_clientes")
+
+
+def atualizar_categoria_cliente(request, client_id: str):
+    ensure_storage()
+    client = get_client(client_id)
+    if not client:
+        raise Http404("Cliente nao encontrado.")
+    if request.method == "POST":
+        update_client_category(client_id, request.POST.get("category", ""))
+    return redirect("dashboard")
 
 
 def importar_carteira(request):
@@ -340,6 +399,35 @@ def clientes_qi_descobertos(request):
                     "linked_funds": int(result["fund_count"]),
                     "single_client": client_name,
                 }
+        elif action == "import_selected":
+            selected_client_names = []
+            seen_names: set[str] = set()
+            for client_name in request.POST.getlist("client_names"):
+                normalized_name = client_name.strip()
+                if not normalized_name or normalized_name in seen_names:
+                    continue
+                seen_names.add(normalized_name)
+                selected_client_names.append(normalized_name)
+
+            imported_clients = 0
+            linked_funds = 0
+            processed_clients = 0
+            for client_name in selected_client_names:
+                exists_before = get_client_by_name(client_name) is not None
+                result = import_qi_client_candidate(client_name)
+                if not result:
+                    continue
+                processed_clients += 1
+                linked_funds += int(result["fund_count"])
+                if not exists_before:
+                    imported_clients += 1
+
+            if processed_clients:
+                import_summary = {
+                    "imported_clients": imported_clients,
+                    "linked_funds": linked_funds,
+                    "selected_count": processed_clients,
+                }
 
     search_form = ClienteQiBuscaForm(request.GET or None)
     candidates = discover_qi_client_candidates() if metadata else []
@@ -352,6 +440,7 @@ def clientes_qi_descobertos(request):
                 if query in str(candidate.get("name", "")).lower()
                 or query in str(candidate.get("company_cnpj", "")).lower()
                 or query in str(candidate.get("category", "")).lower()
+                or any(query in str(fund.get("fund_name", "")).lower() for fund in candidate.get("funds", []))
             ]
 
     return render(
@@ -372,18 +461,22 @@ def catalogo_fundos(request):
     search_term = ""
     if search_form.is_valid():
         search_term = search_form.cleaned_data.get("consulta") or ""
-    funds = list_all_linked_funds(search_term)
+    funds = list_catalog_funds(search_term=search_term, qitech_only=False)
     fund_type_filter = (request.GET.get("fund_type") or "").strip()
-    user_filter = (request.GET.get("user_filter") or "").strip()
+    manager_operator = (request.GET.get("manager_operator") or "contains").strip()
+    manager_filter = (request.GET.get("manager_filter") or "").strip().lower()
     sort = (request.GET.get("sort") or "").strip()
     per_page = request.GET.get("per_page") or "20"
+    fund_type_options = sorted({fund.get("product_type", "") for fund in funds if fund.get("product_type", "")})
 
     if fund_type_filter:
         funds = [fund for fund in funds if fund.get("product_type", "") == fund_type_filter]
-    if user_filter == "true":
-        funds = [fund for fund in funds if fund.get("is_user_fund_bool")]
-    elif user_filter == "false":
-        funds = [fund for fund in funds if not fund.get("is_user_fund_bool")]
+    if manager_filter:
+        funds = [
+            fund
+            for fund in funds
+            if _matches_text_filter(str(fund.get("manager_name", "")), manager_operator, manager_filter)
+        ]
 
     if sort == "pl_asc":
         funds = sorted(funds, key=lambda item: parse_decimal(item.get("pl", "0")))
@@ -401,9 +494,10 @@ def catalogo_fundos(request):
         "search_form": search_form,
         "page_obj": page_obj,
         "funds": page_obj.object_list,
-        "fund_type_options": list_known_product_types(),
+        "fund_type_options": fund_type_options,
         "fund_type_filter": fund_type_filter,
-        "user_filter": user_filter,
+        "manager_operator": manager_operator,
+        "manager_filter": manager_filter,
         "sort": sort,
         "per_page": str(per_page_value),
     }

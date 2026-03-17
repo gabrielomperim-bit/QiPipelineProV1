@@ -109,7 +109,7 @@ class ClienteQiBuscaForm(forms.Form):
         label="Pesquisar cliente",
         max_length=140,
         required=False,
-        help_text="Busque por nome, CNPJ ou categoria.",
+        help_text="Busque por nome do cliente, nome do fundo, CNPJ ou categoria.",
     )
 
 

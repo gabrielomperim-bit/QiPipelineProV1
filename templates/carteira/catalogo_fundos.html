@@ -8,7 +8,7 @@
     <div class="section-header">
         <div>
             <p class="eyebrow">Fundos</p>
-            <h2>Todos os fundos de todos os clientes</h2>
+            <h2>Todos os fundos encontrados na CVM</h2>
         </div>
     </div>
 
@@ -25,12 +25,13 @@
                 </select>
             </p>
             <p>
-                <label for="user_filter">Usuario administra</label>
-                <select name="user_filter" id="user_filter">
-                    <option value="" {% if not user_filter %}selected{% endif %}>Todos</option>
-                    <option value="true" {% if user_filter == "true" %}selected{% endif %}>Sim</option>
-                    <option value="false" {% if user_filter == "false" %}selected{% endif %}>Nao</option>
+                <label for="manager_filter">Consultoria</label>
+                <select name="manager_operator" id="manager_operator">
+                    <option value="contains" {% if manager_operator == "contains" %}selected{% endif %}>contém</option>
+                    <option value="eq" {% if manager_operator == "eq" %}selected{% endif %}>==</option>
+                    <option value="neq" {% if manager_operator == "neq" %}selected{% endif %}>!=</option>
                 </select>
+                <input type="text" name="manager_filter" id="manager_filter" value="{{ manager_filter }}" placeholder="Filtrar consultoria">
             </p>
             <p>
                 <label for="sort">Ordenar</label>
@@ -60,12 +61,10 @@
                 <thead>
                     <tr>
                         <th>Fundo</th>
-                        <th>Cliente</th>
                         <th>CNPJ</th>
                         <th>PL</th>
-                        <th>Receita mensal</th>
                         <th>Tipo de fundo</th>
-                        <th>Usuario administra</th>
+                        <th>Consultoria</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -77,25 +76,10 @@
                                     <a class="icon-link" href="{{ fund.regulation_url }}" target="_blank" rel="noreferrer" download title="Baixar regulamento">&#x2B07;</a>
                                 </div>
                             </td>
-                            <td>
-                                {% if fund.has_client %}
-                                    <a href="{% url 'detalhe_cliente' fund.client_id %}">{{ fund.client_name }}</a>
-                                {% else %}
-                                    {{ fund.client_name }}
-                                {% endif %}
-                            </td>
                             <td>{{ fund.cnpj }}</td>
                             <td>{{ fund.formatted_pl }}</td>
-                            <td>{{ fund.formatted_revenue }}</td>
                             <td>{{ fund.product_type }}</td>
-                            <td>
-                                <form method="post" action="{% url 'alternar_fundo_usuario' fund.client_id fund.id %}" class="inline-form compact-form checkbox-form">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                    <input type="hidden" name="is_user_fund" value="0">
-                                    <input type="checkbox" name="is_user_fund" value="1" {% if fund.is_user_fund_bool %}checked{% endif %} onchange="this.form.submit()">
-                                </form>
-                            </td>
+                            <td>{{ fund.manager_name|default:"-" }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -106,10 +90,10 @@
             <span>Pagina {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
             <div class="pagination-links">
                 {% if page_obj.has_previous %}
-                    <a href="?consulta={{ request.GET.consulta }}&fund_type={{ fund_type_filter }}&user_filter={{ user_filter }}&sort={{ sort }}&per_page={{ per_page }}&page={{ page_obj.previous_page_number }}">Anterior</a>
+                    <a href="?consulta={{ request.GET.consulta }}&fund_type={{ fund_type_filter }}&manager_operator={{ manager_operator }}&manager_filter={{ manager_filter }}&sort={{ sort }}&per_page={{ per_page }}&page={{ page_obj.previous_page_number }}">Anterior</a>
                 {% endif %}
                 {% if page_obj.has_next %}
-                    <a href="?consulta={{ request.GET.consulta }}&fund_type={{ fund_type_filter }}&user_filter={{ user_filter }}&sort={{ sort }}&per_page={{ per_page }}&page={{ page_obj.next_page_number }}">Proxima</a>
+                    <a href="?consulta={{ request.GET.consulta }}&fund_type={{ fund_type_filter }}&manager_operator={{ manager_operator }}&manager_filter={{ manager_filter }}&sort={{ sort }}&per_page={{ per_page }}&page={{ page_obj.next_page_number }}">Proxima</a>
                 {% endif %}
             </div>
         </div>

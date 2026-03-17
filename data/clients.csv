@@ -1,1 +1,2 @@
-id,name,category,company_cnpj,company_cnpj_source,monthly_revenue,monthly_revenue_source,notes,created_at,updated_at
+id,name,category,is_user_client,company_cnpj,company_cnpj_source,monthly_revenue,monthly_revenue_source,notes,created_at,updated_at
+dd767ffef9584b1d8bd32592d414332b,M8 PARTNERS GESTORA DE RECURSOS LTDA.,gestora,0,18038439000179,CVM Consultoria,598431.36,Soma das receitas calculadas dos fundos,Cliente descoberto automaticamente via base CVM. Relacao com QITech: Administrador.,2026-03-17T12:15:13,2026-03-17T12:47:58

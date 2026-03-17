@@ -4,6 +4,7 @@ from . import views
 
 urlpatterns = [
     path("", views.dashboard, name="dashboard"),
+    path("clientes/", views.lista_clientes, name="lista_clientes"),
     path("fundos/", views.catalogo_fundos, name="catalogo_fundos"),
     path("importar/", views.importar_carteira, name="importar_carteira"),
     path("cvm/", views.sincronizar_cvm, name="sincronizar_cvm"),
@@ -12,6 +13,8 @@ urlpatterns = [
     path("receita/regras/<str:product_type>/remover/", views.remover_regra_receita, name="remover_regra_receita"),
     path("clientes/novo/", views.novo_cliente, name="novo_cliente"),
     path("clientes/<str:client_id>/", views.detalhe_cliente, name="detalhe_cliente"),
+    path("clientes/<str:client_id>/categoria/", views.atualizar_categoria_cliente, name="atualizar_categoria_cliente"),
+    path("clientes/<str:client_id>/usuario/", views.alternar_cliente_usuario, name="alternar_cliente_usuario"),
     path("clientes/<str:client_id>/buscar-fundos/", views.buscar_fundos_cliente, name="buscar_fundos_cliente"),
     path("clientes/<str:client_id>/vincular-fundo/", views.vincular_fundo_cliente, name="vincular_fundo_cliente"),
     path("clientes/<str:client_id>/atualizar-receita-fundo/", views.atualizar_receita_fundo, name="atualizar_receita_fundo"),

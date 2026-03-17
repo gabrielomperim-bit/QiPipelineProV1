@@ -15,6 +15,8 @@ from .data_store import (
     add_fund,
     format_cnpj,
     format_currency,
+    load_clients,
+    load_funds,
     get_client_by_name,
     normalize_fund_type,
     parse_decimal,
@@ -152,6 +154,62 @@ def search_funds(search_term: str = "", qitech_only: bool = True, limit: int = 1
 
     results.sort(key=lambda item: item["fund_name"])
     return results[:limit]
+
+
+def list_catalog_funds(search_term: str = "", qitech_only: bool = False) -> list[dict[str, object]]:
+    cache_dir = ensure_cvm_cache()
+    catalog_path = cache_dir / "catalog.csv"
+    if not catalog_path.exists():
+        return []
+
+    catalog_rows = _load_semicolon_csv(catalog_path)
+    local_funds = load_funds()
+    clients_by_id = {client["id"]: client for client in load_clients()}
+
+    local_by_class_id = {
+        fund.get("cvm_class_id", ""): fund
+        for fund in local_funds
+        if fund.get("cvm_class_id", "")
+    }
+    local_by_cnpj = {
+        "".join(char for char in str(fund.get("cnpj", "")) if char.isdigit()): fund
+        for fund in local_funds
+        if fund.get("cnpj", "")
+    }
+
+    normalized_search = search_term.strip().lower()
+    results: list[dict[str, object]] = []
+
+    for record in catalog_rows:
+        if normalized_search and not _record_matches(record, normalized_search):
+            continue
+        if qitech_only and not _is_qi_related(record):
+            continue
+
+        local_fund = (
+            local_by_class_id.get(record.get("cvm_class_id", ""))
+            or local_by_cnpj.get(_digits_only(record.get("cnpj", "")))
+        )
+        client = clients_by_id.get(local_fund.get("client_id", ""), {}) if local_fund else {}
+
+        results.append(
+            {
+                **record,
+                "client_id": local_fund.get("client_id", "") if local_fund else "",
+                "local_fund_id": local_fund.get("id", "") if local_fund else "",
+                "client_name": client.get("name", "") or "Nao cadastrado",
+                "has_client": bool(client),
+                "monthly_revenue": local_fund.get("monthly_revenue", "") if local_fund else "",
+                "formatted_revenue": format_currency(parse_decimal(local_fund.get("monthly_revenue", ""))) if local_fund else "-",
+                "formatted_pl": format_currency(parse_decimal(record.get("pl", ""))) if record.get("pl") else "-",
+                "product_type": normalize_fund_type(record.get("product_type", "")),
+                "is_user_fund_bool": str(local_fund.get("is_user_fund", "0")).strip().lower() in {"1", "true", "sim", "yes", "y", "on"} if local_fund else False,
+                "regulation_url": record.get("regulation_url", "") or "https://cvmweb.cvm.gov.br/SWB/default.asp?sg_sistema=fundosreg",
+            }
+        )
+
+    results.sort(key=lambda item: str(item.get("fund_name", "")).lower())
+    return results
 
 
 def discover_qi_client_candidates(limit: int = 300) -> list[dict[str, object]]:

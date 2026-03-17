@@ -24,13 +24,34 @@
     {% else %}
         {% if import_summary %}
             <div class="summary-box">
-                <p><strong>{{ import_summary.single_client }}</strong> processado com {{ import_summary.linked_funds }} fundo{{ import_summary.linked_funds|pluralize }} vinculado{{ import_summary.linked_funds|pluralize }}.</p>
+                {% if import_summary.single_client %}
+                    <p><strong>{{ import_summary.single_client }}</strong> processado com {{ import_summary.linked_funds }} fundo{{ import_summary.linked_funds|pluralize }} vinculado{{ import_summary.linked_funds|pluralize }}.</p>
+                {% else %}
+                    <p><strong>{{ import_summary.selected_count }}</strong> cliente{{ import_summary.selected_count|pluralize }} processado{{ import_summary.selected_count|pluralize }} com {{ import_summary.linked_funds }} fundo{{ import_summary.linked_funds|pluralize }} vinculado{{ import_summary.linked_funds|pluralize }}. Novos clientes criados: {{ import_summary.imported_clients }}.</p>
+                {% endif %}
             </div>
         {% endif %}
 
         <form method="get" class="stack-form search-box">
             {{ search_form.as_p }}
             <button type="submit">Pesquisar</button>
+        </form>
+
+        <form method="post" id="qi-import-form" class="content-card batch-actions-card">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="import_selected">
+            <div class="section-header">
+                <div>
+                    <p class="eyebrow">Importacao em lote</p>
+                    <h3>Selecionar clientes pendentes</h3>
+                </div>
+                <div class="summary-meta">
+                    <button type="button" class="secondary-button js-select-visible">Selecionar visiveis</button>
+                    <button type="button" class="secondary-button js-clear-selection">Limpar selecao</button>
+                    <button type="submit" class="js-import-selected">Importar selecionados</button>
+                </div>
+            </div>
+            <p class="muted">Marque os clientes pendentes que deseja importar em uma unica acao.</p>
         </form>
 
         <div class="stack-list" id="qi-candidates-list">
@@ -42,6 +63,12 @@
                             <p class="muted">{{ candidate.category }} | {{ candidate.fund_count }} fundo{{ candidate.fund_count|pluralize }} | {{ candidate.company_cnpj|default:"CNPJ nao identificado" }}</p>
                         </div>
                         <div class="summary-meta">
+                            {% if not candidate.already_exists %}
+                                <label class="candidate-selector" title="Selecionar cliente">
+                                    <input type="checkbox" form="qi-import-form" name="client_names" value="{{ candidate.name }}" class="js-candidate-checkbox">
+                                    <span>Selecionar</span>
+                                </label>
+                            {% endif %}
                             <span class="status-pill {% if candidate.already_exists %}status-done{% else %}status-pending{% endif %}">
                                 {% if candidate.already_exists %}Ja cadastrado{% else %}Pendente{% endif %}
                             </span>
@@ -121,6 +148,20 @@
 </section>
 <script>
     (function () {
+        function bindSelectorGuards() {
+            document.querySelectorAll(".candidate-selector").forEach(function (label) {
+                label.addEventListener("click", function (event) {
+                    event.stopPropagation();
+                });
+            });
+
+            document.querySelectorAll(".candidate-selector input").forEach(function (input) {
+                input.addEventListener("click", function (event) {
+                    event.stopPropagation();
+                });
+            });
+        }
+
         function setupPagination(items, pageSize, controls) {
             if (!items.length) {
                 if (controls.wrapper) {
@@ -192,6 +233,67 @@
                 next: card.querySelector(".js-funds-next")
             });
         });
+
+        bindSelectorGuards();
+
+        var importForm = document.getElementById("qi-import-form");
+        var selectVisibleButton = document.querySelector(".js-select-visible");
+        var clearSelectionButton = document.querySelector(".js-clear-selection");
+        var importSelectedButton = document.querySelector(".js-import-selected");
+
+        function getCandidateCheckboxes() {
+            return Array.prototype.slice.call(document.querySelectorAll(".js-candidate-checkbox"));
+        }
+
+        function getVisibleCandidateCheckboxes() {
+            return getCandidateCheckboxes().filter(function (checkbox) {
+                var card = checkbox.closest(".js-candidate-card");
+                return card && !card.hidden;
+            });
+        }
+
+        function updateImportButtonState() {
+            var selectedCount = getCandidateCheckboxes().filter(function (checkbox) {
+                return checkbox.checked;
+            }).length;
+
+            if (importSelectedButton) {
+                importSelectedButton.disabled = selectedCount === 0;
+                importSelectedButton.textContent = selectedCount ? "Importar selecionados (" + selectedCount + ")" : "Importar selecionados";
+            }
+        }
+
+        if (selectVisibleButton) {
+            selectVisibleButton.addEventListener("click", function () {
+                getVisibleCandidateCheckboxes().forEach(function (checkbox) {
+                    checkbox.checked = true;
+                });
+                updateImportButtonState();
+            });
+        }
+
+        if (clearSelectionButton) {
+            clearSelectionButton.addEventListener("click", function () {
+                getCandidateCheckboxes().forEach(function (checkbox) {
+                    checkbox.checked = false;
+                });
+                updateImportButtonState();
+            });
+        }
+
+        getCandidateCheckboxes().forEach(function (checkbox) {
+            checkbox.addEventListener("change", updateImportButtonState);
+        });
+
+        if (importForm) {
+            importForm.addEventListener("submit", function (event) {
+                if (!getCandidateCheckboxes().some(function (checkbox) { return checkbox.checked; })) {
+                    event.preventDefault();
+                }
+            });
+        }
+
+        updateImportButtonState();
     }());
 </script>
 {% endblock %}
