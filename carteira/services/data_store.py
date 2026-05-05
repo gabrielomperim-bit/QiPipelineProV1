@@ -99,6 +99,19 @@ CATEGORY_LABELS = {
     "outros": "Outros",
 }
 
+USER_DASHBOARD_COLORS = [
+    "#2d7ff9",
+    "#0d2b66",
+    "#4c9aff",
+    "#7aa8ff",
+    "#14b8a6",
+    "#06b6d4",
+    "#f59e0b",
+    "#ef4444",
+    "#8b5cf6",
+    "#10b981",
+]
+
 
 @dataclass
 class ImportSummary:
@@ -539,6 +552,123 @@ def build_dashboard_metrics() -> dict[str, object]:
     }
 
 
+def build_user_dashboard(filters: dict[str, str] | None = None) -> dict[str, object]:
+    selected_filters = filters or {}
+    selected_fund_type = normalize_fund_type(selected_filters.get("fund_type", ""))
+    selected_manager = _as_clean_string(selected_filters.get("manager_name"))
+    selected_administrator = _as_clean_string(selected_filters.get("administrator_name"))
+    selected_category = _as_clean_string(selected_filters.get("category")).lower()
+
+    clients_by_id = {client["id"]: client for client in load_clients()}
+    catalog_by_class_id, catalog_by_cnpj = _load_cvm_catalog_indexes()
+
+    all_user_funds: list[dict[str, object]] = []
+    for fund in load_funds():
+        if not _is_truthy(fund.get("is_user_fund", "0")):
+            continue
+        catalog_row = _catalog_match_for_fund(fund, catalog_by_class_id, catalog_by_cnpj)
+        client = clients_by_id.get(fund.get("client_id", ""), {})
+        client_category = _as_clean_string(client.get("category")).lower()
+        product_type = normalize_fund_type(fund.get("product_type", "")) or (
+            normalize_fund_type(catalog_row.get("product_type", "")) if catalog_row else ""
+        )
+        manager_name = _as_clean_string(fund.get("manager_name")) or (
+            _as_clean_string(catalog_row.get("manager_name")) if catalog_row else ""
+        )
+        administrator_name = _as_clean_string(fund.get("administrator_name")) or (
+            _as_clean_string(catalog_row.get("administrator_name")) if catalog_row else ""
+        )
+        pl_value = parse_decimal(fund.get("pl", ""))
+        revenue_value = parse_decimal(fund.get("monthly_revenue", ""))
+        all_user_funds.append(
+            {
+                "id": fund.get("id", ""),
+                "client_id": fund.get("client_id", ""),
+                "client_name": _as_clean_string(client.get("name")) or "Cliente nao identificado",
+                "client_category": client_category,
+                "client_category_label": CATEGORY_LABELS.get(client_category, client_category or "Sem categoria"),
+                "fund_name": _as_clean_string(fund.get("fund_name")),
+                "cnpj": format_cnpj(fund.get("cnpj", "")),
+                "product_type": product_type or "Sem tipo",
+                "manager_name": manager_name or "Sem consultoria",
+                "administrator_name": administrator_name or "Sem administrador",
+                "pl_value": pl_value,
+                "revenue_value": revenue_value,
+                "formatted_pl": format_currency(pl_value),
+                "formatted_revenue": format_currency(revenue_value),
+                "regulation_url": _regulation_url_or_default(fund.get("regulation_url", "")),
+            }
+        )
+
+    filtered_funds = []
+    for fund in all_user_funds:
+        if selected_fund_type and fund["product_type"] != selected_fund_type:
+            continue
+        if selected_manager and fund["manager_name"] != selected_manager:
+            continue
+        if selected_administrator and fund["administrator_name"] != selected_administrator:
+            continue
+        if selected_category and fund["client_category"] != selected_category:
+            continue
+        filtered_funds.append(fund)
+
+    total_pl = sum((item["pl_value"] for item in filtered_funds), start=Decimal("0"))
+    total_revenue = sum((item["revenue_value"] for item in filtered_funds), start=Decimal("0"))
+    unique_clients = {item["client_id"]: item["client_name"] for item in filtered_funds if item["client_id"]}
+    average_pl = (total_pl / Decimal(str(len(filtered_funds)))).quantize(Decimal("0.01")) if filtered_funds else Decimal("0")
+
+    product_type_options = sorted({str(item["product_type"]) for item in all_user_funds if str(item["product_type"]).strip()})
+    manager_options = sorted({str(item["manager_name"]) for item in all_user_funds if str(item["manager_name"]).strip()})
+    administrator_options = sorted(
+        {str(item["administrator_name"]) for item in all_user_funds if str(item["administrator_name"]).strip()}
+    )
+    category_options = [
+        (value, label)
+        for value, label in CATEGORY_LABELS.items()
+        if any(item["client_category"] == value for item in all_user_funds)
+    ]
+
+    return {
+        "metrics": {
+            "total_user_funds": len(filtered_funds),
+            "total_user_clients": len(unique_clients),
+            "total_user_pl": format_currency(total_pl),
+            "total_user_revenue": format_currency(total_revenue),
+            "average_user_pl": format_currency(average_pl),
+        },
+        "filters": {
+            "fund_type": selected_fund_type,
+            "manager_name": selected_manager,
+            "administrator_name": selected_administrator,
+            "category": selected_category,
+            "fund_type_options": product_type_options,
+            "manager_options": manager_options,
+            "administrator_options": administrator_options,
+            "category_options": category_options,
+        },
+        "charts": {
+            "product_types": _build_donut_chart(
+                filtered_funds,
+                key="product_type",
+                title="Distribuicao por tipo de fundo",
+                total_label=format_currency(total_pl),
+            ),
+            "categories": _build_donut_chart(
+                filtered_funds,
+                key="client_category_label",
+                title="Distribuicao por categoria de cliente",
+                total_label=format_currency(total_pl),
+            ),
+            "clients": _build_bar_chart(filtered_funds, key="client_name", title="Top clientes por PL"),
+            "managers": _build_bar_chart(filtered_funds, key="manager_name", title="Top consultorias por PL"),
+            "administrators": _build_bar_chart(filtered_funds, key="administrator_name", title="Top administradores por PL"),
+        },
+        "top_funds": sorted(filtered_funds, key=lambda item: (item["pl_value"], item["fund_name"]), reverse=True)[:12],
+        "has_user_funds": bool(all_user_funds),
+        "has_filtered_funds": bool(filtered_funds),
+    }
+
+
 def get_client(client_id: str) -> dict[str, object] | None:
     clients = load_clients()
     funds = load_funds()
@@ -946,6 +1076,98 @@ def _normalize_search_text(value: object) -> str:
     ascii_only = "".join(char for char in normalized if not unicodedata.combining(char))
     collapsed = re.sub(r"\s+", " ", ascii_only)
     return collapsed.strip()
+
+
+def _aggregate_chart_rows(funds: list[dict[str, object]], key: str) -> list[dict[str, object]]:
+    grouped: dict[str, dict[str, object]] = {}
+    for fund in funds:
+        label = _as_clean_string(fund.get(key)) or "Nao informado"
+        current = grouped.setdefault(
+            label,
+            {
+                "label": label,
+                "value": Decimal("0"),
+                "count": 0,
+            },
+        )
+        current["value"] = Decimal(current["value"]) + Decimal(fund.get("pl_value", Decimal("0")))
+        current["count"] = int(current["count"]) + 1
+    return sorted(grouped.values(), key=lambda item: (Decimal(item["value"]), item["label"]), reverse=True)
+
+
+def _build_donut_chart(
+    funds: list[dict[str, object]],
+    key: str,
+    title: str,
+    total_label: str,
+    top_n: int = 6,
+) -> dict[str, object]:
+    rows = _aggregate_chart_rows(funds, key)
+    visible_rows = rows[:top_n]
+    if len(rows) > top_n:
+        other_total = sum((Decimal(row["value"]) for row in rows[top_n:]), start=Decimal("0"))
+        other_count = sum((int(row["count"]) for row in rows[top_n:]), start=0)
+        visible_rows.append({"label": "Outros", "value": other_total, "count": other_count})
+
+    total_value = sum((Decimal(row["value"]) for row in visible_rows), start=Decimal("0"))
+    segments = []
+    legend = []
+    current_angle = Decimal("0")
+
+    for index, row in enumerate(visible_rows):
+        color = USER_DASHBOARD_COLORS[index % len(USER_DASHBOARD_COLORS)]
+        value = Decimal(row["value"])
+        percent = (value / total_value * Decimal("100")) if total_value > 0 else Decimal("0")
+        next_angle = current_angle + percent
+        segments.append(
+            f"{color} {current_angle.quantize(Decimal('0.01'))}% {next_angle.quantize(Decimal('0.01'))}%"
+        )
+        legend.append(
+            {
+                "label": row["label"],
+                "count": row["count"],
+                "formatted_value": format_currency(value),
+                "share_percent": f"{percent.quantize(Decimal('0.1'))}%",
+                "color": color,
+            }
+        )
+        current_angle = next_angle
+
+    return {
+        "title": title,
+        "total_label": total_label,
+        "legend": legend,
+        "conic_gradient": f"conic-gradient({', '.join(segments)})" if segments else "conic-gradient(#dbe9ff 0 100%)",
+        "empty": not legend,
+    }
+
+
+def _build_bar_chart(
+    funds: list[dict[str, object]],
+    key: str,
+    title: str,
+    top_n: int = 8,
+) -> dict[str, object]:
+    rows = _aggregate_chart_rows(funds, key)[:top_n]
+    max_value = max((Decimal(row["value"]) for row in rows), default=Decimal("0"))
+    items = []
+    for index, row in enumerate(rows):
+        value = Decimal(row["value"])
+        width_percent = (value / max_value * Decimal("100")) if max_value > 0 else Decimal("0")
+        items.append(
+            {
+                "label": row["label"],
+                "count": row["count"],
+                "formatted_value": format_currency(value),
+                "width_percent": f"{width_percent.quantize(Decimal('0.1'))}%",
+                "color": USER_DASHBOARD_COLORS[index % len(USER_DASHBOARD_COLORS)],
+            }
+        )
+    return {
+        "title": title,
+        "items": items,
+        "empty": not items,
+    }
 
 
 def _digits_only(value: object) -> str:

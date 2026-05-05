@@ -5,6 +5,7 @@ Base inicial de um gestor local de carteiras em Django, pensado para uso simples
 ## O que ja existe
 
 - Dashboard com resumo da carteira por categoria.
+- Analise comercial a partir de duas planilhas `.xlsx`, com leitura de scorecard, carteira, pipeline e follow-up.
 - Cadastro manual de clientes.
 - Importacao de planilhas `.csv` e `.xlsx`.
 - Persistencia em arquivos `CSV`, sem banco de dados.
@@ -51,6 +52,14 @@ python manage.py runserver
 
 Depois, abra `http://127.0.0.1:8000/`.
 
+## Fluxo sugerido de uso
+
+1. Abra `Analise comercial` e envie o scorecard e a base de fundos.
+2. Revise os indicadores principais, gaps de target e cruzamento de fundos.
+3. Se precisar operacionalizar a carteira no portal, use `Sincronizar CVM`.
+4. Descubra clientes via QI ou cadastre clientes manualmente.
+5. Vincule fundos aos clientes e acompanhe a receita calculada.
+
 Se quiser deixar facil para a usuaria final:
 
 - Primeira instalacao: `scripts\instalar_primeira_vez.bat`
@@ -67,6 +76,17 @@ O script oferece 2 modos:
 
 - `1`: limpa clientes, fundos, contatos, regras e uploads, mas preserva a base CVM ja sincronizada.
 - `2`: limpa tudo, incluindo os arquivos da CVM, exigindo nova sincronizacao depois.
+
+## Validacao rapida
+
+Para validar o projeto sem mexer nos CSVs reais da operacao:
+
+```powershell
+python manage.py check
+python manage.py test carteira
+```
+
+O comando `python manage.py test carteira` roda smoke tests em diretorios temporarios, cobrindo as telas principais e alguns fluxos basicos sem alterar os dados locais em `data/`.
 
 ## Proximos passos recomendados
 

@@ -8,6 +8,7 @@ from django.shortcuts import redirect, render
 from .forms import (
     ClienteForm,
     ClienteQiBuscaForm,
+    ComercialAnalysisUploadForm,
     ContatoForm,
     FundoBuscaForm,
     FundoCatalogoBuscaForm,
@@ -23,11 +24,19 @@ from .services.cvm_sync import (
     search_funds,
     sync_cvm_data,
 )
+from .services.commercial_analysis import (
+    analysis_files_available,
+    build_and_cache_analysis_snapshot,
+    get_analysis_files,
+    load_cached_analysis_snapshot,
+    save_uploaded_analysis_files,
+)
 from .services.data_store import (
     add_client,
     add_contact,
     add_fund,
     build_dashboard_metrics,
+    build_user_dashboard,
     delete_client,
     delete_rule,
     ensure_storage,
@@ -73,6 +82,62 @@ def dashboard(request):
         "cvm_metadata": get_sync_metadata(),
     }
     return render(request, "carteira/dashboard.html", context)
+
+
+def dashboard_usuario(request):
+    ensure_storage()
+    filters = {
+        "fund_type": request.GET.get("fund_type", ""),
+        "manager_name": request.GET.get("manager_name", ""),
+        "administrator_name": request.GET.get("administrator_name", ""),
+        "category": request.GET.get("category", ""),
+    }
+    context = build_user_dashboard(filters)
+    return render(request, "carteira/dashboard_usuario.html", context)
+
+
+def analise_comercial(request):
+    ensure_storage()
+    summary = None
+    error_message = None
+
+    if request.method == "POST":
+        form = ComercialAnalysisUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            files = get_analysis_files()
+            scorecard_file = form.cleaned_data["scorecard"]
+            base_file = form.cleaned_data["base_fundos"]
+            if (scorecard_file and not base_file and not files.base_path.exists()) or (
+                base_file and not scorecard_file and not files.scorecard_path.exists()
+            ):
+                error_message = "Na primeira carga, envie as duas planilhas para montar a analise completa."
+            else:
+                save_uploaded_analysis_files(scorecard_file, base_file)
+                try:
+                    summary = build_and_cache_analysis_snapshot()
+                except Exception as exc:
+                    error_message = f"Nao foi possivel processar as planilhas: {exc}"
+        else:
+            error_message = "Revise os arquivos enviados e tente novamente."
+    else:
+        form = ComercialAnalysisUploadForm()
+
+    if summary is None and not error_message and analysis_files_available():
+        try:
+            summary = load_cached_analysis_snapshot() or build_and_cache_analysis_snapshot()
+        except Exception as exc:
+            error_message = f"Nao foi possivel carregar a analise salva: {exc}"
+
+    return render(
+        request,
+        "carteira/analise_comercial.html",
+        {
+            "form": form,
+            "summary": summary,
+            "error_message": error_message,
+            "has_saved_files": analysis_files_available(),
+        },
+    )
 
 
 def lista_clientes(request):

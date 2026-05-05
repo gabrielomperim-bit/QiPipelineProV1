@@ -8,6 +8,27 @@ class UploadCarteiraForm(forms.Form):
     )
 
 
+class ComercialAnalysisUploadForm(forms.Form):
+    scorecard = forms.FileField(
+        label="Scorecard comercial",
+        required=False,
+        help_text="Envie a planilha principal de scorecard em .xlsx.",
+    )
+    base_fundos = forms.FileField(
+        label="Base de fundos",
+        required=False,
+        help_text="Envie a planilha complementar de fundos em .xlsx.",
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        scorecard = cleaned_data.get("scorecard")
+        base_fundos = cleaned_data.get("base_fundos")
+        if not scorecard and not base_fundos:
+            raise forms.ValidationError("Envie pelo menos uma planilha para gerar ou atualizar a analise.")
+        return cleaned_data
+
+
 class ClienteForm(forms.Form):
     nome = forms.CharField(label="Cliente", max_length=140)
     categoria = forms.ChoiceField(

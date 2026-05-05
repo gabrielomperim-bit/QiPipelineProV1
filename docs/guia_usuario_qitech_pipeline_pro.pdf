@@ -1,0 +1,317 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+3 0 obj
+<< /Type /Pages /Count 3 /Kids [5 0 R 7 0 R 9 0 R] >>
+endobj
+4 0 obj
+<< /Length 2508 >>
+stream
+BT
+/F2 22 Tf
+1 0 0 1 54 778 Tm
+(QITech Pipeline Pro) Tj
+/F1 15 Tf
+1 0 0 1 54 748 Tm
+(Guia de Usuario) Tj
+/F2 15 Tf
+1 0 0 1 54 716 Tm
+(Sumario) Tj
+/F1 11 Tf
+1 0 0 1 54 692 Tm
+(1. Sumario ............................................. 1) Tj
+/F1 11 Tf
+1 0 0 1 54 677 Tm
+(2. Objetivo ............................................ 1) Tj
+/F1 11 Tf
+1 0 0 1 54 662 Tm
+(3. Fluxo rapido ........................................ 1) Tj
+/F1 11 Tf
+1 0 0 1 54 647 Tm
+(4. Menus principais .................................... 1) Tj
+/F1 11 Tf
+1 0 0 1 54 632 Tm
+(5. Analise comercial ................................... 1) Tj
+/F1 11 Tf
+1 0 0 1 54 617 Tm
+(6. Operacao da carteira ................................ 2) Tj
+/F1 11 Tf
+1 0 0 1 54 602 Tm
+(7. Uso diario recomendado .............................. 2) Tj
+/F1 11 Tf
+1 0 0 1 54 587 Tm
+(8. Boas praticas ....................................... 2) Tj
+/F1 11 Tf
+1 0 0 1 54 572 Tm
+(9. Solucao rapida de problemas ......................... 3) Tj
+/F2 15 Tf
+1 0 0 1 54 547 Tm
+(Objetivo) Tj
+/F1 11 Tf
+1 0 0 1 54 513 Tm
+(O QITech Pipeline Pro organiza analise comercial, clientes, fundos e receita em um portal simples para) Tj
+/F1 11 Tf
+1 0 0 1 54 498 Tm
+(uso local.) Tj
+/F2 15 Tf
+1 0 0 1 54 463 Tm
+(Fluxo rapido) Tj
+/F1 11 Tf
+1 0 0 1 54 429 Tm
+(1. Abra `Analise comercial`.) Tj
+/F1 11 Tf
+1 0 0 1 54 414 Tm
+(2. Envie o `Scorecard` e a `Base de fundos`.) Tj
+/F1 11 Tf
+1 0 0 1 54 399 Tm
+(3. Revise receita, target, follow-up, pipeline e cruzamento de fundos.) Tj
+/F1 11 Tf
+1 0 0 1 54 384 Tm
+(4. Se quiser operar a carteira dentro do portal, use `Sincronizar CVM`.) Tj
+/F1 11 Tf
+1 0 0 1 54 369 Tm
+(5. Descubra clientes via QI ou cadastre manualmente.) Tj
+/F1 11 Tf
+1 0 0 1 54 354 Tm
+(6. Vincule fundos aos clientes.) Tj
+/F1 11 Tf
+1 0 0 1 54 339 Tm
+(7. Ajuste regras de receita quando necessario.) Tj
+/F2 15 Tf
+1 0 0 1 54 304 Tm
+(Menus principais) Tj
+/F2 12 Tf
+1 0 0 1 54 270 Tm
+(Visao geral) Tj
+/F1 11 Tf
+1 0 0 1 54 242 Tm
+(Resumo rapido da base local de clientes, fundos e receita.) Tj
+/F2 12 Tf
+1 0 0 1 54 217 Tm
+(Dashboard do usuario) Tj
+/F1 11 Tf
+1 0 0 1 54 189 Tm
+(Mostra apenas os fundos marcados como administrados pelo usuario.) Tj
+/F2 12 Tf
+1 0 0 1 54 164 Tm
+(Analise comercial) Tj
+/F1 11 Tf
+1 0 0 1 54 136 Tm
+(Le a dupla de planilhas comerciais e gera uma visao executiva pronta para consulta.) Tj
+/F2 12 Tf
+1 0 0 1 54 111 Tm
+(Clientes) Tj
+/F1 11 Tf
+1 0 0 1 54 83 Tm
+(Lista os clientes cadastrados e da acesso ao detalhe de cada conta.) Tj
+/F1 9 Tf
+1 0 0 1 517 40 Tm
+(1) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 4 0 R >>
+endobj
+6 0 obj
+<< /Length 2224 >>
+stream
+BT
+/F2 12 Tf
+1 0 0 1 54 778 Tm
+(Fundos) Tj
+/F1 11 Tf
+1 0 0 1 54 750 Tm
+(Permite pesquisar e filtrar a base de fundos disponivel no portal.) Tj
+/F2 12 Tf
+1 0 0 1 54 725 Tm
+(Sincronizar CVM) Tj
+/F1 11 Tf
+1 0 0 1 54 697 Tm
+(Atualiza a base local com dados publicos usados para busca e vinculacao de fundos.) Tj
+/F2 12 Tf
+1 0 0 1 54 672 Tm
+(Clientes via QI) Tj
+/F1 11 Tf
+1 0 0 1 54 644 Tm
+(Ajuda a descobrir clientes relacionados a QI e importar esses registros.) Tj
+/F2 12 Tf
+1 0 0 1 54 619 Tm
+(Regras de receita) Tj
+/F1 11 Tf
+1 0 0 1 54 591 Tm
+(Define a taxa anual por tipo de produto para calculo automatico da receita mensal.) Tj
+/F2 15 Tf
+1 0 0 1 54 556 Tm
+(Analise comercial) Tj
+/F1 11 Tf
+1 0 0 1 54 522 Tm
+(Envie sempre duas planilhas:) Tj
+/F1 11 Tf
+1 0 0 1 54 497 Tm
+(- `Scorecard`) Tj
+/F1 11 Tf
+1 0 0 1 54 482 Tm
+(- `Base de fundos`) Tj
+/F1 11 Tf
+1 0 0 1 54 457 Tm
+(A pagina mostra:) Tj
+/F1 11 Tf
+1 0 0 1 54 432 Tm
+(- resumo executivo) Tj
+/F1 11 Tf
+1 0 0 1 54 417 Tm
+(- top clientes do mes) Tj
+/F1 11 Tf
+1 0 0 1 54 402 Tm
+(- clientes abaixo do target) Tj
+/F1 11 Tf
+1 0 0 1 54 387 Tm
+(- scorecard consolidado) Tj
+/F1 11 Tf
+1 0 0 1 54 372 Tm
+(- pipeline por etapa) Tj
+/F1 11 Tf
+1 0 0 1 54 357 Tm
+(- follow-up por tipo e empresa) Tj
+/F1 11 Tf
+1 0 0 1 54 342 Tm
+(- concentracao da carteira) Tj
+/F1 11 Tf
+1 0 0 1 54 327 Tm
+(- cruzamento entre carteira e base) Tj
+/F1 11 Tf
+1 0 0 1 54 302 Tm
+(Os nomes dos ultimos arquivos enviados ficam salvos na propria tela para conferencia.) Tj
+/F2 15 Tf
+1 0 0 1 54 267 Tm
+(Operacao da carteira) Tj
+/F2 12 Tf
+1 0 0 1 54 233 Tm
+(Cadastrar ou descobrir clientes) Tj
+/F1 11 Tf
+1 0 0 1 54 205 Tm
+(Use `Clientes via QI` quando quiser buscar contas com sinais de relacionamento.) Tj
+/F1 11 Tf
+1 0 0 1 54 190 Tm
+(Use `Cadastrar cliente` quando a conta ainda nao existir.) Tj
+/F2 12 Tf
+1 0 0 1 54 165 Tm
+(Vincular fundos) Tj
+/F1 11 Tf
+1 0 0 1 54 137 Tm
+(Entre no cliente, busque os fundos e vincule os registros corretos.) Tj
+/F2 12 Tf
+1 0 0 1 54 112 Tm
+(Calcular receita) Tj
+/F1 11 Tf
+1 0 0 1 54 84 Tm
+(Cadastre as regras de taxa anual em `Regras de receita`.) Tj
+/F1 11 Tf
+1 0 0 1 54 69 Tm
+(O portal calcula a receita mensal do fundo e soma no cliente.) Tj
+/F1 9 Tf
+1 0 0 1 517 40 Tm
+(2) Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 6 0 R >>
+endobj
+8 0 obj
+<< /Length 1588 >>
+stream
+BT
+/F2 15 Tf
+1 0 0 1 54 758 Tm
+(Uso diario recomendado) Tj
+/F1 11 Tf
+1 0 0 1 54 724 Tm
+(1. Atualize as planilhas em `Analise comercial`.) Tj
+/F1 11 Tf
+1 0 0 1 54 709 Tm
+(2. Revise gaps de receita, contas em destaque e atividade comercial.) Tj
+/F1 11 Tf
+1 0 0 1 54 694 Tm
+(3. Sincronize a CVM quando precisar atualizar a base de fundos.) Tj
+/F1 11 Tf
+1 0 0 1 54 679 Tm
+(4. Ajuste clientes, fundos e regras somente quando houver mudanca real.) Tj
+/F2 15 Tf
+1 0 0 1 54 644 Tm
+(Boas praticas) Tj
+/F1 11 Tf
+1 0 0 1 54 610 Tm
+(- Use os nomes corretos das planilhas para facilitar conferencia.) Tj
+/F1 11 Tf
+1 0 0 1 54 595 Tm
+(- Revise clientes abaixo do target antes de atuar na carteira.) Tj
+/F1 11 Tf
+1 0 0 1 54 580 Tm
+(- Vincule fundos apenas depois de confirmar cliente e CNPJ.) Tj
+/F1 11 Tf
+1 0 0 1 54 565 Tm
+(- Mantenha as regras de receita atualizadas por tipo de produto.) Tj
+/F2 15 Tf
+1 0 0 1 54 530 Tm
+(Solucao rapida de problemas) Tj
+/F2 12 Tf
+1 0 0 1 54 496 Tm
+(A analise nao apareceu) Tj
+/F1 11 Tf
+1 0 0 1 54 468 Tm
+(Confirme se as duas planilhas foram enviadas ao menos uma vez.) Tj
+/F2 12 Tf
+1 0 0 1 54 443 Tm
+(O fundo nao foi encontrado) Tj
+/F1 11 Tf
+1 0 0 1 54 415 Tm
+(Sincronize a CVM e tente novamente.) Tj
+/F2 12 Tf
+1 0 0 1 54 390 Tm
+(A receita parece errada) Tj
+/F1 11 Tf
+1 0 0 1 54 362 Tm
+(Revise a taxa anual em `Regras de receita` e confira o fundo vinculado.) Tj
+/F2 12 Tf
+1 0 0 1 54 337 Tm
+(O nome do arquivo sumiu) Tj
+/F1 11 Tf
+1 0 0 1 54 309 Tm
+(Reenvie a planilha na tela `Analise comercial` para atualizar o registro salvo.) Tj
+/F1 9 Tf
+1 0 0 1 517 40 Tm
+(3) Tj
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 3 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 8 0 R >>
+endobj
+10 0 obj
+<< /Type /Catalog /Pages 3 0 R >>
+endobj
+xref
+0 11
+0000000000 65535 f 
+0000000015 00000 n 
+0000000085 00000 n 
+0000000160 00000 n 
+0000000229 00000 n 
+0000002789 00000 n 
+0000002925 00000 n 
+0000005201 00000 n 
+0000005337 00000 n 
+0000006977 00000 n 
+0000007113 00000 n 
+trailer
+<< /Size 11 /Root 10 0 R >>
+startxref
+7163
+%%EOF

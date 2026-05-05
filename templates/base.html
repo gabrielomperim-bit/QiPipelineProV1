@@ -20,6 +20,8 @@
             </div>
             <nav class="nav-links">
                 <a href="{% url 'dashboard' %}">Visao geral</a>
+                <a href="{% url 'dashboard_usuario' %}">Dashboard do usuario</a>
+                <a href="{% url 'analise_comercial' %}">Analise comercial</a>
                 <a href="{% url 'lista_clientes' %}">Clientes</a>
                 <a href="{% url 'catalogo_fundos' %}">Fundos</a>
                 <a href="{% url 'importar_carteira' %}">Importar planilha</a>
@@ -30,10 +32,10 @@
             </nav>
             <div class="sidebar-note">
                 <span class="note-label">Modo de uso</span>
-                <strong>1. Sincronize</strong>
-                <strong>2. Descubra clientes</strong>
-                <strong>3. Vincule fundos</strong>
-                <strong>4. Calcule receita</strong>
+                <strong>1. Analise planilhas</strong>
+                <strong>2. Sincronize a CVM</strong>
+                <strong>3. Descubra ou cadastre clientes</strong>
+                <strong>4. Vincule fundos e acompanhe receita</strong>
             </div>
         </aside>
         <main class="main-content">

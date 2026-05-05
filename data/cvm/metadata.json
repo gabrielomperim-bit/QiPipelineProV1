@@ -1,11 +1,11 @@
 {
-  "imported_at": "2026-03-17T12:14:57",
+  "imported_at": "2026-05-05T01:09:39",
   "cadastro_url": "https://dados.cvm.gov.br/dados/FI/CAD/DADOS/registro_fundo_classe.zip",
-  "inf_diario_file": "inf_diario_fi_202603.csv",
+  "inf_diario_file": "inf_diario_fi_202604.csv",
   "downloaded_files": [
     "registro_fundo.csv",
     "registro_classe.csv",
-    "inf_diario_fi_202603.csv",
+    "inf_diario_fi_202604.csv",
     "latest_pl.csv",
     "catalog.csv"
   ]

@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard do usuario | QITech{% endblock %}
+{% block page_title %}Dashboard do usuario{% endblock %}
+
+{% block content %}
+<section class="hero-card">
+    <div class="hero-copy">
+        <p class="eyebrow">Minha carteira</p>
+        <h2>Visao dos fundos que o usuario administra</h2>
+        <p class="muted">Esta dashboard considera apenas os fundos marcados com <strong>Usuario administra</strong> na pagina do cliente.</p>
+    </div>
+    <div class="metrics-grid">
+        <article class="metric-card">
+            <span>Fundos da minha carteira</span>
+            <strong>{{ metrics.total_user_funds }}</strong>
+        </article>
+        <article class="metric-card">
+            <span>Clientes com fundos meus</span>
+            <strong>{{ metrics.total_user_clients }}</strong>
+        </article>
+        <article class="metric-card">
+            <span>PL total</span>
+            <strong>{{ metrics.total_user_pl }}</strong>
+        </article>
+        <article class="metric-card">
+            <span>Receita mensal potencial</span>
+            <strong>{{ metrics.total_user_revenue }}</strong>
+        </article>
+        <article class="metric-card">
+            <span>PL medio por fundo</span>
+            <strong>{{ metrics.average_user_pl }}</strong>
+        </article>
+    </div>
+</section>
+
+<section class="content-card">
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">Filtros</p>
+            <h2>Refinar carteira do usuario</h2>
+        </div>
+    </div>
+
+    <form method="get" class="stack-form search-box">
+        <div class="filters-grid">
+            <p>
+                <label for="fund_type">Tipo de fundo</label>
+                <select name="fund_type" id="fund_type">
+                    <option value="">Todos</option>
+                    {% for option in filters.fund_type_options %}
+                        <option value="{{ option }}" {% if filters.fund_type == option %}selected{% endif %}>{{ option }}</option>
+                    {% endfor %}
+                </select>
+            </p>
+            <p>
+                <label for="manager_name">Consultoria</label>
+                <select name="manager_name" id="manager_name">
+                    <option value="">Todas</option>
+                    {% for option in filters.manager_options %}
+                        <option value="{{ option }}" {% if filters.manager_name == option %}selected{% endif %}>{{ option }}</option>
+                    {% endfor %}
+                </select>
+            </p>
+            <p>
+                <label for="administrator_name">Administrador</label>
+                <select name="administrator_name" id="administrator_name">
+                    <option value="">Todos</option>
+                    {% for option in filters.administrator_options %}
+                        <option value="{{ option }}" {% if filters.administrator_name == option %}selected{% endif %}>{{ option }}</option>
+                    {% endfor %}
+                </select>
+            </p>
+            <p>
+                <label for="category">Categoria do cliente</label>
+                <select name="category" id="category">
+                    <option value="">Todas</option>
+                    {% for value, label in filters.category_options %}
+                        <option value="{{ value }}" {% if filters.category == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </p>
+        </div>
+        <div class="dashboard-actions">
+            <button type="submit">Aplicar filtros</button>
+            <a class="button-link secondary-button" href="{% url 'dashboard_usuario' %}">Limpar filtros</a>
+        </div>
+    </form>
+</section>
+
+{% if not has_user_funds %}
+    <section class="content-card">
+        <p class="empty-state">Ainda nao existem fundos marcados como <strong>Usuario administra</strong>. Marque os fundos na pagina do cliente para ativar esta dashboard.</p>
+    </section>
+{% elif not has_filtered_funds %}
+    <section class="content-card">
+        <p class="empty-state">Nenhum fundo do usuario foi encontrado com os filtros atuais.</p>
+    </section>
+{% else %}
+    <section class="dashboard-grid">
+        <article class="content-card chart-card">
+            <div class="chart-card-header">
+                <p class="eyebrow">Grafico</p>
+                <h3>{{ charts.product_types.title }}</h3>
+            </div>
+            <div class="donut-layout">
+                <div class="donut-ring" style="--donut-fill: {{ charts.product_types.conic_gradient }};">
+                    <div class="donut-hole">
+                        <span>PL total</span>
+                        <strong>{{ charts.product_types.total_label }}</strong>
+                    </div>
+                </div>
+                <div class="chart-legend">
+                    {% for item in charts.product_types.legend %}
+                        <div class="legend-row">
+                            <span class="legend-bullet" style="background: {{ item.color }};"></span>
+                            <div>
+                                <strong>{{ item.label }}</strong>
+                                <p class="muted">{{ item.formatted_value }} | {{ item.share_percent }} | {{ item.count }} fundo{{ item.count|pluralize }}</p>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </article>
+
+        <article class="content-card chart-card">
+            <div class="chart-card-header">
+                <p class="eyebrow">Grafico</p>
+                <h3>{{ charts.categories.title }}</h3>
+            </div>
+            <div class="donut-layout">
+                <div class="donut-ring" style="--donut-fill: {{ charts.categories.conic_gradient }};">
+                    <div class="donut-hole">
+                        <span>PL total</span>
+                        <strong>{{ charts.categories.total_label }}</strong>
+                    </div>
+                </div>
+                <div class="chart-legend">
+                    {% for item in charts.categories.legend %}
+                        <div class="legend-row">
+                            <span class="legend-bullet" style="background: {{ item.color }};"></span>
+                            <div>
+                                <strong>{{ item.label }}</strong>
+                                <p class="muted">{{ item.formatted_value }} | {{ item.share_percent }} | {{ item.count }} fundo{{ item.count|pluralize }}</p>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </article>
+
+        <article class="content-card chart-card">
+            <div class="chart-card-header">
+                <p class="eyebrow">Ranking</p>
+                <h3>{{ charts.clients.title }}</h3>
+            </div>
+            <div class="bar-chart">
+                {% for item in charts.clients.items %}
+                    <div class="bar-row">
+                        <div class="bar-meta">
+                            <strong>{{ item.label }}</strong>
+                            <span>{{ item.formatted_value }}</span>
+                        </div>
+                        <div class="bar-track">
+                            <span class="bar-fill" style="width: {{ item.width_percent }}; background: {{ item.color }};"></span>
+                        </div>
+                        <small class="muted">{{ item.count }} fundo{{ item.count|pluralize }}</small>
+                    </div>
+                {% endfor %}
+            </div>
+        </article>
+
+        <article class="content-card chart-card">
+            <div class="chart-card-header">
+                <p class="eyebrow">Ranking</p>
+                <h3>{{ charts.managers.title }}</h3>
+            </div>
+            <div class="bar-chart">
+                {% for item in charts.managers.items %}
+                    <div class="bar-row">
+                        <div class="bar-meta">
+                            <strong>{{ item.label }}</strong>
+                            <span>{{ item.formatted_value }}</span>
+                        </div>
+                        <div class="bar-track">
+                            <span class="bar-fill" style="width: {{ item.width_percent }}; background: {{ item.color }};"></span>
+                        </div>
+                        <small class="muted">{{ item.count }} fundo{{ item.count|pluralize }}</small>
+                    </div>
+                {% endfor %}
+            </div>
+        </article>
+
+        <article class="content-card chart-card chart-card-wide">
+            <div class="chart-card-header">
+                <p class="eyebrow">Ranking</p>
+                <h3>{{ charts.administrators.title }}</h3>
+            </div>
+            <div class="bar-chart">
+                {% for item in charts.administrators.items %}
+                    <div class="bar-row">
+                        <div class="bar-meta">
+                            <strong>{{ item.label }}</strong>
+                            <span>{{ item.formatted_value }}</span>
+                        </div>
+                        <div class="bar-track">
+                            <span class="bar-fill" style="width: {{ item.width_percent }}; background: {{ item.color }};"></span>
+                        </div>
+                        <small class="muted">{{ item.count }} fundo{{ item.count|pluralize }}</small>
+                    </div>
+                {% endfor %}
+            </div>
+        </article>
+    </section>
+
+    <section class="content-card">
+        <div class="section-header">
+            <div>
+                <p class="eyebrow">Top fundos</p>
+                <h2>Maiores fundos da carteira do usuario</h2>
+            </div>
+        </div>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fundo</th>
+                        <th>Cliente</th>
+                        <th>Categoria</th>
+                        <th>Tipo de fundo</th>
+                        <th>Consultoria</th>
+                        <th>Administrador</th>
+                        <th>PL</th>
+                        <th>Receita mensal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fund in top_funds %}
+                        <tr>
+                            <td>
+                                <div class="fund-name-cell">
+                                    <span>{{ fund.fund_name }}</span>
+                                    <a class="icon-link" href="{{ fund.regulation_url }}" target="_blank" rel="noreferrer" download title="Baixar regulamento">&#x2B07;</a>
+                                </div>
+                            </td>
+                            <td><a href="{% url 'detalhe_cliente' fund.client_id %}">{{ fund.client_name }}</a></td>
+                            <td>{{ fund.client_category_label }}</td>
+                            <td>{{ fund.product_type }}</td>
+                            <td>{{ fund.manager_name }}</td>
+                            <td>{{ fund.administrator_name }}</td>
+                            <td>{{ fund.formatted_pl }}</td>
+                            <td>{{ fund.formatted_revenue }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,382 @@
+{% extends "base.html" %}
+
+{% block title %}Analise comercial | QITech{% endblock %}
+{% block page_title %}Analise comercial{% endblock %}
+
+{% block content %}
+<section class="hero-card">
+    <div class="hero-copy">
+        <p class="eyebrow">Planilhas comerciais</p>
+        <h2>Leitura consolidada do scorecard e da base de fundos</h2>
+        <p class="muted">Envie as duas planilhas para gerar uma visao executiva da carteira, pipeline e atividade comercial sem abrir menus extras.</p>
+    </div>
+    <div>
+        <form method="post" enctype="multipart/form-data" class="stack-form">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+            <p>
+                {{ form.scorecard.label_tag }}
+                {{ form.scorecard }}
+                {% if form.scorecard.help_text %}<small class="muted">{{ form.scorecard.help_text }}</small>{% endif %}
+            </p>
+            <p>
+                {{ form.base_fundos.label_tag }}
+                {{ form.base_fundos }}
+                {% if form.base_fundos.help_text %}<small class="muted">{{ form.base_fundos.help_text }}</small>{% endif %}
+            </p>
+            <div class="dashboard-actions">
+                <button type="submit">Gerar analise</button>
+                {% if has_saved_files %}
+                    <span class="workspace-pill">Ultima carga salva no portal</span>
+                {% endif %}
+            </div>
+        </form>
+        {% if summary %}
+            <div class="summary-box upload-summary">
+                <p><strong>Ultimo scorecard:</strong> {{ summary.source_files.scorecard.original_name }}</p>
+                <p><strong>Ultima base de fundos:</strong> {{ summary.source_files.base.original_name }}</p>
+                {% if summary.source_files.scorecard.saved_at or summary.source_files.base.saved_at %}
+                    <p class="muted">Salvos no portal em {{ summary.source_files.scorecard.saved_at|default:summary.source_files.base.saved_at }}.</p>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</section>
+
+{% if error_message %}
+    <section class="content-card">
+        <p class="empty-state">{{ error_message }}</p>
+    </section>
+{% endif %}
+
+{% if not summary %}
+    <section class="content-card">
+        <p class="empty-state">Envie o scorecard e a base de fundos para ativar esta analise. Depois da primeira carga, voce pode atualizar apenas um dos arquivos quando necessario.</p>
+    </section>
+{% else %}
+    <section class="content-card">
+        <div class="section-header">
+            <div>
+                <p class="eyebrow">Resumo executivo</p>
+                <h2>Visao geral da operacao</h2>
+                <p class="muted">Gerado em {{ summary.generated_at }} com dados reportados ate {{ summary.reference.reported_until|default:"-" }}.</p>
+            </div>
+        </div>
+        <div class="metrics-grid">
+            {% for metric in summary.metrics %}
+                <article class="metric-card">
+                    <span>{{ metric.label }}</span>
+                    <strong>{{ metric.value }}</strong>
+                    <p class="muted metric-helper">{{ metric.helper }}</p>
+                </article>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="dashboard-grid">
+        <article class="content-card chart-card">
+            <div class="chart-card-header">
+                <p class="eyebrow">Receita</p>
+                <h3>Top clientes do mes</h3>
+            </div>
+            <div class="table-wrapper compact-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>{{ summary.reference.latest_month_label|default:"Mes" }}</th>
+                            <th>YTD atual</th>
+                            <th>YTD target</th>
+                            <th>Cobertura</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in summary.top_clients %}
+                            <tr>
+                                <td>{{ item.name }}</td>
+                                <td>{{ item.month_value }}</td>
+                                <td>{{ item.ytd_actual }}</td>
+                                <td>{{ item.ytd_target }}</td>
+                                <td>{{ item.coverage }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </article>
+
+        <article class="content-card chart-card">
+            <div class="chart-card-header">
+                <p class="eyebrow">Risco</p>
+                <h3>Clientes abaixo do target YTD</h3>
+            </div>
+            <div class="table-wrapper compact-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>YTD atual</th>
+                            <th>YTD target</th>
+                            <th>Delta</th>
+                            <th>Cobertura</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in summary.underperforming_clients %}
+                            <tr>
+                                <td>{{ item.name }}</td>
+                                <td>{{ item.ytd_actual }}</td>
+                                <td>{{ item.ytd_target }}</td>
+                                <td>{{ item.delta }}</td>
+                                <td>{{ item.coverage }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </article>
+    </section>
+
+    <section class="content-card">
+        <div class="section-header">
+            <div>
+                <p class="eyebrow">KPI</p>
+                <h2>Scorecard consolidado</h2>
+            </div>
+        </div>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>KPI</th>
+                        <th>Peso</th>
+                        <th>Realizado</th>
+                        <th>Target</th>
+                        <th>Realizado YTD</th>
+                        <th>Target YTD</th>
+                        <th>Atingimento</th>
+                        <th>Ating. ponderado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in summary.kpis %}
+                        <tr>
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.weight_label }}</td>
+                            <td>{{ item.actual_value }}</td>
+                            <td>{{ item.target_value }}</td>
+                            <td>{{ item.actual_ytd }}</td>
+                            <td>{{ item.target_ytd }}</td>
+                            <td>{{ item.attainment_label }}</td>
+                            <td>{{ item.weighted_attainment_label }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="dashboard-grid">
+        <article class="content-card chart-card">
+            <div class="chart-card-header">
+                <p class="eyebrow">Carteira</p>
+                <h3>Concentracao por client group</h3>
+            </div>
+            <div class="bar-chart">
+                {% for item in summary.carteira_summary.top_groups %}
+                    <div class="bar-row">
+                        <div class="bar-meta">
+                            <strong>{{ item.label }}</strong>
+                            <span>{{ item.count }} fundos</span>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </article>
+
+        <article class="content-card chart-card">
+            <div class="chart-card-header">
+                <p class="eyebrow">Pipeline</p>
+                <h3>Negocios por etapa</h3>
+            </div>
+            <div class="bar-chart">
+                {% for item in summary.pipeline_summary.stages %}
+                    <div class="bar-row">
+                        <div class="bar-meta">
+                            <strong>{{ item.label }}</strong>
+                            <span>{{ item.count }}</span>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </article>
+
+        <article class="content-card chart-card">
+            <div class="chart-card-header">
+                <p class="eyebrow">Atividade</p>
+                <h3>Tipos de follow-up</h3>
+            </div>
+            <div class="bar-chart">
+                {% for item in summary.follow_up_summary.activity_types %}
+                    <div class="bar-row">
+                        <div class="bar-meta">
+                            <strong>{{ item.label }}</strong>
+                            <span>{{ item.count }}</span>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </article>
+
+        <article class="content-card chart-card">
+            <div class="chart-card-header">
+                <p class="eyebrow">Base</p>
+                <h3>Fundos abertos por mes</h3>
+            </div>
+            <div class="table-wrapper compact-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mes</th>
+                            <th>2024</th>
+                            <th>2025</th>
+                            <th>Delta</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in summary.base_summary.opening_by_month %}
+                            <tr>
+                                <td>{{ item.month }}</td>
+                                <td>{{ item.opened_2024 }}</td>
+                                <td>{{ item.opened_2025 }}</td>
+                                <td>{{ item.delta }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </article>
+    </section>
+
+    <section class="dashboard-grid">
+        <article class="content-card chart-card">
+            <div class="chart-card-header">
+                <p class="eyebrow">Cruzamento</p>
+                <h3>Fundos na carteira e fora da base</h3>
+            </div>
+            <p class="muted">Cobertura da carteira na base: {{ summary.overlap_summary.coverage_on_carteira_label }}.</p>
+            <div class="table-wrapper compact-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fundo</th>
+                            <th>CNPJ</th>
+                            <th>Gestora</th>
+                            <th>Grupo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in summary.overlap_summary.only_carteira %}
+                            <tr>
+                                <td>{{ item.fund_name }}</td>
+                                <td>{{ item.cnpj }}</td>
+                                <td>{{ item.manager_name }}</td>
+                                <td>{{ item.client_group }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="4">Nenhum fundo pendente deste lado.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </article>
+
+        <article class="content-card chart-card">
+            <div class="chart-card-header">
+                <p class="eyebrow">Cruzamento</p>
+                <h3>Fundos na base e fora da carteira</h3>
+            </div>
+            <div class="table-wrapper compact-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fundo</th>
+                            <th>CNPJ</th>
+                            <th>Gestora</th>
+                            <th>Consultoria</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in summary.overlap_summary.only_base %}
+                            <tr>
+                                <td>{{ item.fund_name }}</td>
+                                <td>{{ item.cnpj }}</td>
+                                <td>{{ item.manager_name }}</td>
+                                <td>{{ item.consultancy_name }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="4">Nenhum fundo pendente deste lado.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </article>
+    </section>
+
+    <section class="dashboard-grid">
+        <article class="content-card chart-card">
+            <div class="chart-card-header">
+                <p class="eyebrow">Atividade</p>
+                <h3>Empresas com mais follow-ups</h3>
+            </div>
+            <div class="table-wrapper compact-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Empresa</th>
+                            <th>Interacoes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in summary.follow_up_summary.top_companies %}
+                            <tr>
+                                <td>{{ item.label }}</td>
+                                <td>{{ item.count }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </article>
+
+        <article class="content-card chart-card">
+            <div class="chart-card-header">
+                <p class="eyebrow">Pipeline</p>
+                <h3>Empresas mais recorrentes no pipeline</h3>
+            </div>
+            <div class="table-wrapper compact-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Empresa</th>
+                            <th>Negocios</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in summary.pipeline_summary.top_companies %}
+                            <tr>
+                                <td>{{ item.label }}</td>
+                                <td>{{ item.count }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </article>
+    </section>
+{% endif %}
+{% endblock %}
