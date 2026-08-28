@@ -5,4 +5,6 @@ __pycache__/
 *.log
 uploads/
 staticfiles/
+.env
+persistent/
 

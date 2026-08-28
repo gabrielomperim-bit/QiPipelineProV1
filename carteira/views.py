@@ -1,9 +1,12 @@
+from io import BytesIO
 from pathlib import Path
 
 from django.conf import settings
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.core.paginator import Paginator
 from django.shortcuts import redirect, render
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Font, PatternFill
 
 from .forms import (
     ClienteForm,
@@ -40,6 +43,7 @@ from .services.data_store import (
     delete_client,
     delete_rule,
     ensure_storage,
+    format_currency,
     get_client,
     get_client_by_name,
     group_clients_by_category,
@@ -523,6 +527,27 @@ def clientes_qi_descobertos(request):
 def catalogo_fundos(request):
     ensure_storage()
     search_form = FundoCatalogoBuscaForm(request.GET or None)
+    funds, catalog_filters, fund_type_options = _get_filtered_catalog_funds(request, search_form)
+    total_pl = sum((parse_decimal(fund.get("pl", "0")) for fund in funds), start=parse_decimal("0"))
+    per_page = request.GET.get("per_page") or "20"
+
+    per_page_value = int(per_page) if per_page in {"20", "50", "100"} else 20
+    paginator = Paginator(funds, per_page_value)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    context = {
+        "search_form": search_form,
+        "page_obj": page_obj,
+        "funds": page_obj.object_list,
+        "fund_count": len(funds),
+        "total_pl": format_currency(total_pl),
+        "fund_type_options": fund_type_options,
+        **catalog_filters,
+        "per_page": str(per_page_value),
+    }
+    return render(request, "carteira/catalogo_fundos.html", context)
+
+
+def _get_filtered_catalog_funds(request, search_form):
     search_term = ""
     if search_form.is_valid():
         search_term = search_form.cleaned_data.get("consulta") or ""
@@ -533,7 +558,6 @@ def catalogo_fundos(request):
     administrator_operator = (request.GET.get("administrator_operator") or "contains").strip()
     administrator_filter = (request.GET.get("administrator_filter") or "").strip().lower()
     sort = (request.GET.get("sort") or "").strip()
-    per_page = request.GET.get("per_page") or "20"
     fund_type_options = sorted({fund.get("product_type", "") for fund in funds if fund.get("product_type", "")})
 
     if fund_type_filter:
@@ -563,21 +587,60 @@ def catalogo_fundos(request):
         funds = sorted(funds, key=lambda item: parse_decimal(item.get("monthly_revenue", "0")))
     elif sort == "revenue_desc":
         funds = sorted(funds, key=lambda item: parse_decimal(item.get("monthly_revenue", "0")), reverse=True)
+    elif sort == "name":
+        funds = sorted(funds, key=lambda item: str(item.get("fund_name", "")).casefold())
 
-    per_page_value = int(per_page) if per_page in {"20", "50", "100"} else 20
-    paginator = Paginator(funds, per_page_value)
-    page_obj = paginator.get_page(request.GET.get("page"))
-    context = {
-        "search_form": search_form,
-        "page_obj": page_obj,
-        "funds": page_obj.object_list,
-        "fund_type_options": fund_type_options,
+    filters = {
         "fund_type_filter": fund_type_filter,
         "manager_operator": manager_operator,
         "manager_filter": manager_filter,
         "administrator_operator": administrator_operator,
         "administrator_filter": administrator_filter,
         "sort": sort,
-        "per_page": str(per_page_value),
     }
-    return render(request, "carteira/catalogo_fundos.html", context)
+    return funds, filters, fund_type_options
+
+
+def exportar_fundos_excel(request):
+    ensure_storage()
+    search_form = FundoCatalogoBuscaForm(request.GET or None)
+    funds, _, _ = _get_filtered_catalog_funds(request, search_form)
+
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Fundos"
+    worksheet.append(["Fundo", "CNPJ", "PL", "Tipo de fundo", "Gestora", "Administrador"])
+
+    header_fill = PatternFill("solid", fgColor="0F1E3E")
+    for cell in worksheet[1]:
+        cell.fill = header_fill
+        cell.font = Font(color="FFFFFF", bold=True)
+        cell.alignment = Alignment(vertical="center")
+
+    for fund in funds:
+        worksheet.append(
+            [
+                fund.get("fund_name", ""),
+                fund.get("cnpj", ""),
+                float(parse_decimal(fund.get("pl", "0"))),
+                fund.get("product_type", ""),
+                fund.get("manager_name", ""),
+                fund.get("administrator_name", ""),
+            ]
+        )
+
+    worksheet.freeze_panes = "A2"
+    worksheet.auto_filter.ref = worksheet.dimensions
+    for column, width in {"A": 52, "B": 20, "C": 20, "D": 18, "E": 38, "F": 38}.items():
+        worksheet.column_dimensions[column].width = width
+    for cell in worksheet["C"][1:]:
+        cell.number_format = 'R$ #,##0.00'
+
+    output = BytesIO()
+    workbook.save(output)
+    response = HttpResponse(
+        output.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = 'attachment; filename="catalogo-de-fundos.xlsx"'
+    return response

@@ -10,41 +10,25 @@
 </head>
 <body>
     <div class="page-shell">
-        <aside class="sidebar">
-            <div class="brand-block">
-                <div class="brand-mark">QI</div>
-                <div>
-                    <p class="eyebrow">QITech Pipeline Pro</p>
-                    <h1>Workspace</h1>
-                </div>
-            </div>
-            <nav class="nav-links">
-                <a href="{% url 'dashboard' %}">Visao geral</a>
-                <a href="{% url 'dashboard_usuario' %}">Dashboard do usuario</a>
-                <a href="{% url 'analise_comercial' %}">Analise comercial</a>
-                <a href="{% url 'lista_clientes' %}">Clientes</a>
-                <a href="{% url 'catalogo_fundos' %}">Fundos</a>
-                <a href="{% url 'importar_carteira' %}">Importar planilha</a>
-                <a href="{% url 'sincronizar_cvm' %}">Sincronizar CVM</a>
-                <a href="{% url 'clientes_qi_descobertos' %}">Clientes via QI</a>
-                <a href="{% url 'regras_receita' %}">Regras de receita</a>
-                <a href="{% url 'novo_cliente' %}">Cadastrar cliente</a>
+        <header class="top-navigation">
+            <a class="top-brand" href="{% url 'home' %}" aria-label="Ir para o início">
+                <span class="brand-mark">QI</span>
+                <span class="top-brand-copy">
+                    <strong>Workspace</strong>
+                    <small>QITech Pipeline Pro</small>
+                </span>
+            </a>
+            <nav class="top-links" aria-label="Navegação principal">
+                <a class="active" href="{% url 'catalogo_fundos' %}">Fundos</a>
             </nav>
-            <div class="sidebar-note">
-                <span class="note-label">Modo de uso</span>
-                <strong>1. Analise planilhas</strong>
-                <strong>2. Sincronize a CVM</strong>
-                <strong>3. Descubra ou cadastre clientes</strong>
-                <strong>4. Vincule fundos e acompanhe receita</strong>
-            </div>
-        </aside>
+            <span class="top-context">Workspace comercial</span>
+        </header>
         <main class="main-content">
             <header class="workspace-bar">
                 <div>
                     <p class="eyebrow">Workspace</p>
                     <h2>{% block page_title %}Painel{% endblock %}</h2>
                 </div>
-                <div class="workspace-pill">Modelo inspirado em workspace</div>
             </header>
             {% block content %}{% endblock %}
         </main>

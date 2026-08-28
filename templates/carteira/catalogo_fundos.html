@@ -1,15 +1,30 @@
 {% extends "base.html" %}
 
 {% block title %}Fundos | QITech{% endblock %}
-{% block page_title %}Catalogo de fundos{% endblock %}
+{% block page_title %}Catálogo de fundos{% endblock %}
 
 {% block content %}
 <section class="content-card">
-    <div class="section-header">
+    <div class="section-header funds-heading">
         <div>
             <p class="eyebrow">Fundos</p>
-            <h2>Todos os fundos encontrados na CVM</h2>
+            <h2>Visão consolidada da carteira</h2>
+            <p class="muted">Consulte, filtre e exporte os fundos encontrados na CVM.</p>
         </div>
+        <a class="button-link secondary-button export-button" href="{% url 'exportar_fundos_excel' %}?{{ request.GET.urlencode }}">Exportar Excel</a>
+    </div>
+
+    <div class="fund-summary-grid">
+        <article class="summary-card">
+            <span>Quantidade de fundos</span>
+            <strong>{{ fund_count }}</strong>
+            <small>Resultado dos filtros atuais</small>
+        </article>
+        <article class="summary-card accent">
+            <span>PL total</span>
+            <strong>{{ total_pl }}</strong>
+            <small>Somatório dos fundos encontrados</small>
+        </article>
     </div>
 
     <form method="get" class="stack-form search-box">
@@ -25,13 +40,13 @@
                 </select>
             </p>
             <p>
-                <label for="manager_filter">Consultoria</label>
+                <label for="manager_filter">Gestora</label>
                 <select name="manager_operator" id="manager_operator">
                     <option value="contains" {% if manager_operator == "contains" %}selected{% endif %}>contem</option>
                     <option value="eq" {% if manager_operator == "eq" %}selected{% endif %}>igual a</option>
                     <option value="neq" {% if manager_operator == "neq" %}selected{% endif %}>diferente de</option>
                 </select>
-                <input type="text" name="manager_filter" id="manager_filter" value="{{ manager_filter }}" placeholder="Filtrar consultoria">
+                <input type="text" name="manager_filter" id="manager_filter" value="{{ manager_filter }}" placeholder="Filtrar gestora">
             </p>
             <p>
                 <label for="administrator_filter">Administrador</label>
@@ -45,7 +60,8 @@
             <p>
                 <label for="sort">Ordenar</label>
                 <select name="sort" id="sort">
-                    <option value="">Padrao</option>
+                    <option value="">Padrão</option>
+                    <option value="name" {% if sort == "name" %}selected{% endif %}>Nome do fundo</option>
                     <option value="pl_asc" {% if sort == "pl_asc" %}selected{% endif %}>PL crescente</option>
                     <option value="pl_desc" {% if sort == "pl_desc" %}selected{% endif %}>PL decrescente</option>
                     <option value="revenue_asc" {% if sort == "revenue_asc" %}selected{% endif %}>Receita crescente</option>
@@ -61,7 +77,10 @@
                 </select>
             </p>
         </div>
-        <button type="submit">Pesquisar</button>
+        <div class="form-actions">
+            <button type="submit">Aplicar filtros</button>
+            <a class="clear-link" href="{% url 'catalogo_fundos' %}">Limpar</a>
+        </div>
     </form>
 
     {% if funds %}
@@ -73,7 +92,7 @@
                         <th>CNPJ</th>
                         <th>PL</th>
                         <th>Tipo de fundo</th>
-                        <th>Consultoria</th>
+                        <th>Gestora</th>
                         <th>Administrador</th>
                     </tr>
                 </thead>
@@ -98,13 +117,13 @@
         </div>
 
         <div class="pagination-bar">
-            <span>Pagina {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+            <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
             <div class="pagination-links">
                 {% if page_obj.has_previous %}
                     <a href="?consulta={{ request.GET.consulta }}&fund_type={{ fund_type_filter }}&manager_operator={{ manager_operator }}&manager_filter={{ manager_filter }}&administrator_operator={{ administrator_operator }}&administrator_filter={{ administrator_filter }}&sort={{ sort }}&per_page={{ per_page }}&page={{ page_obj.previous_page_number }}">Anterior</a>
                 {% endif %}
                 {% if page_obj.has_next %}
-                    <a href="?consulta={{ request.GET.consulta }}&fund_type={{ fund_type_filter }}&manager_operator={{ manager_operator }}&manager_filter={{ manager_filter }}&administrator_operator={{ administrator_operator }}&administrator_filter={{ administrator_filter }}&sort={{ sort }}&per_page={{ per_page }}&page={{ page_obj.next_page_number }}">Proxima</a>
+                    <a href="?consulta={{ request.GET.consulta }}&fund_type={{ fund_type_filter }}&manager_operator={{ manager_operator }}&manager_filter={{ manager_filter }}&administrator_operator={{ administrator_operator }}&administrator_filter={{ administrator_filter }}&sort={{ sort }}&per_page={{ per_page }}&page={{ page_obj.next_page_number }}">Próxima</a>
                 {% endif %}
             </div>
         </div>

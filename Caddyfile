@@ -1,0 +1,11 @@
+{$APP_DOMAIN} {
+    encode zstd gzip
+
+    basic_auth {
+        {$APP_USER_1} {$APP_PASSWORD_HASH_1}
+        {$APP_USER_2} {$APP_PASSWORD_HASH_2}
+        {$APP_USER_3} {$APP_PASSWORD_HASH_3}
+    }
+
+    reverse_proxy web:8000
+}

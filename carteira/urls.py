@@ -3,11 +3,13 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path("", views.dashboard, name="dashboard"),
+    path("", views.catalogo_fundos, name="home"),
+    path("visao-geral/", views.dashboard, name="dashboard"),
     path("dashboard/usuario/", views.dashboard_usuario, name="dashboard_usuario"),
     path("dashboard/comercial/", views.analise_comercial, name="analise_comercial"),
     path("clientes/", views.lista_clientes, name="lista_clientes"),
     path("fundos/", views.catalogo_fundos, name="catalogo_fundos"),
+    path("fundos/exportar/", views.exportar_fundos_excel, name="exportar_fundos_excel"),
     path("importar/", views.importar_carteira, name="importar_carteira"),
     path("cvm/", views.sincronizar_cvm, name="sincronizar_cvm"),
     path("cvm/clientes-qi/", views.clientes_qi_descobertos, name="clientes_qi_descobertos"),
