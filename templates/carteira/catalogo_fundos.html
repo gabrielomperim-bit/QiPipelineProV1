@@ -27,9 +27,21 @@
         </article>
     </div>
 
-    <form method="get" class="stack-form search-box">
-        {{ search_form.as_p }}
-        <div class="filters-grid">
+    <details class="filters-panel" {% if request.GET %}open{% endif %}>
+        <summary>
+            <span class="filters-summary-copy">
+                <strong>Filtros de pesquisa</strong>
+                <small>Refine a busca por fundo, tipo, gestora ou administrador.</small>
+            </span>
+            <span class="filters-toggle-label" aria-hidden="true">
+                <span class="label-show">Mostrar filtros</span>
+                <span class="label-hide">Recolher filtros</span>
+                <span class="filters-chevron">⌄</span>
+            </span>
+        </summary>
+        <form method="get" class="stack-form search-box filters-form">
+            {{ search_form.as_p }}
+            <div class="filters-grid">
             <p>
                 <label for="fund_type">Tipo de fundo</label>
                 <select name="fund_type" id="fund_type">
@@ -76,12 +88,13 @@
                     <option value="100" {% if per_page == "100" %}selected{% endif %}>100</option>
                 </select>
             </p>
-        </div>
-        <div class="form-actions">
-            <button type="submit">Aplicar filtros</button>
-            <a class="clear-link" href="{% url 'catalogo_fundos' %}">Limpar</a>
-        </div>
-    </form>
+            </div>
+            <div class="form-actions">
+                <button type="submit">Aplicar filtros</button>
+                <a class="clear-link" href="{% url 'catalogo_fundos' %}">Limpar</a>
+            </div>
+        </form>
+    </details>
 
     {% if funds %}
         <div class="table-wrapper">

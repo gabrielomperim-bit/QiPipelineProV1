@@ -548,6 +548,90 @@ button:hover {
     margin: 18px 0 20px;
 }
 
+.filters-panel {
+    margin: 18px 0 20px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+.filters-panel > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 14px 16px;
+    cursor: pointer;
+    list-style: none;
+    background: #fafcff;
+    transition: background 0.15s ease;
+}
+
+.filters-panel > summary::-webkit-details-marker {
+    display: none;
+}
+
+.filters-panel > summary:hover {
+    background: #f4f7ff;
+}
+
+.filters-summary-copy {
+    display: grid;
+    gap: 3px;
+}
+
+.filters-summary-copy strong {
+    color: var(--panel);
+    font-size: 0.86rem;
+}
+
+.filters-summary-copy small {
+    color: var(--muted);
+    font-size: 0.72rem;
+}
+
+.filters-toggle-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    color: var(--accent);
+    font-size: 0.76rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.filters-chevron {
+    display: inline-block;
+    font-size: 1rem;
+    transition: transform 0.18s ease;
+}
+
+.filters-panel .label-hide {
+    display: none;
+}
+
+.filters-panel[open] .label-show {
+    display: none;
+}
+
+.filters-panel[open] .label-hide {
+    display: inline;
+}
+
+.filters-panel[open] .filters-chevron {
+    transform: rotate(180deg);
+}
+
+.filters-panel[open] > summary {
+    border-bottom: 1px solid var(--line);
+}
+
+.filters-form {
+    margin: 0;
+    padding: 18px 16px;
+}
+
 .batch-actions-card {
     margin-bottom: 18px;
 }
@@ -934,6 +1018,15 @@ tbody tr:hover td {
 
     .fund-summary-grid {
         grid-template-columns: 1fr;
+    }
+
+    .filters-summary-copy small {
+        display: none;
+    }
+
+    .filters-toggle-label .label-show,
+    .filters-toggle-label .label-hide {
+        display: none;
     }
 
     .section-header,
