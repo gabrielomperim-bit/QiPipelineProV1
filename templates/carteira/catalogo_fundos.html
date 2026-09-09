@@ -11,7 +11,32 @@
             <h2>Visão consolidada da carteira</h2>
             <p class="muted">Consulte, filtre e exporte os fundos encontrados na CVM.</p>
         </div>
-        <a class="button-link secondary-button export-button" href="{% url 'exportar_fundos_excel' %}?{{ request.GET.urlencode }}">Exportar Excel</a>
+        <details class="export-menu">
+            <summary class="button-link export-button">Exportar Excel</summary>
+            <form method="get" action="{% url 'exportar_fundos_excel' %}" class="export-options">
+                {% if request.GET.consulta %}<input type="hidden" name="consulta" value="{{ request.GET.consulta }}">{% endif %}
+                {% if fund_type_filter %}<input type="hidden" name="fund_type" value="{{ fund_type_filter }}">{% endif %}
+                {% if manager_filter %}
+                    <input type="hidden" name="manager_operator" value="{{ manager_operator }}">
+                    <input type="hidden" name="manager_filter" value="{{ manager_filter }}">
+                {% endif %}
+                {% if administrator_filter %}
+                    <input type="hidden" name="administrator_operator" value="{{ administrator_operator }}">
+                    <input type="hidden" name="administrator_filter" value="{{ administrator_filter }}">
+                {% endif %}
+                {% if sort %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
+                <strong>Colunas do arquivo</strong>
+                <label><input type="checkbox" name="columns" value="fund_name" checked> Fundo</label>
+                <label><input type="checkbox" name="columns" value="cnpj" checked> CNPJ</label>
+                <label><input type="checkbox" name="columns" value="pl" checked> PL</label>
+                <label><input type="checkbox" name="columns" value="pl_date" checked> Data de referência</label>
+                <label><input type="checkbox" name="columns" value="product_type" checked> Tipo de fundo</label>
+                <label><input type="checkbox" name="columns" value="manager_name" checked> Gestora</label>
+                <label><input type="checkbox" name="columns" value="administrator_name" checked> Administrador</label>
+                <label><input type="checkbox" name="columns" value="status"> Status</label>
+                <button type="submit">Baixar planilha</button>
+            </form>
+        </details>
     </div>
 
     <div class="fund-summary-grid">
@@ -24,6 +49,11 @@
             <span>PL total</span>
             <strong>{{ total_pl }}</strong>
             <small>Somatório dos fundos encontrados</small>
+        </article>
+        <article class="summary-card sync-card">
+            <span>Última sincronização CVM</span>
+            <strong>{{ last_cvm_sync|default:"Não sincronizado" }}</strong>
+            <small>Referência mais recente do PL: {{ latest_pl_reference|default:"Não disponível" }}</small>
         </article>
     </div>
 
@@ -95,6 +125,18 @@
             </div>
         </form>
     </details>
+
+    {% if active_filters %}
+        <div class="active-filters" aria-label="Filtros aplicados">
+            <span class="active-filters-title">Filtros aplicados</span>
+            {% for filter in active_filters %}
+                <a class="filter-chip" href="{{ filter.remove_url }}" title="Remover {{ filter.label }}">
+                    {{ filter.label }} <span aria-hidden="true">×</span>
+                </a>
+            {% endfor %}
+            <a class="clear-all-filters" href="{% url 'catalogo_fundos' %}">Limpar todos</a>
+        </div>
+    {% endif %}
 
     {% if funds %}
         <div class="table-wrapper">

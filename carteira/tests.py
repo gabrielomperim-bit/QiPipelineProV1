@@ -7,7 +7,7 @@ from pathlib import Path
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import SimpleTestCase, override_settings
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 
 from .services.data_store import add_client, add_fund, ensure_storage
 
@@ -222,6 +222,49 @@ class WorkspaceSmokeTests(SimpleTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Fundo Solis Alpha")
         self.assertNotContains(response, "Fundo Solis Beta")
+        self.assertContains(response, "Administrador igual a: QITech Administracao")
+        self.assertContains(response, "05/05/2026 às 10:00")
+        self.assertContains(response, "01/05/2026")
+
+    def test_catalogo_filter_chip_removes_only_selected_filter(self):
+        response = self.client.get(
+            "/fundos/",
+            {
+                "fund_type": "FIDC",
+                "manager_operator": "contains",
+                "manager_filter": "Solis",
+            },
+            HTTP_HOST="127.0.0.1",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Tipo: FIDC")
+        self.assertContains(response, "Gestora contém: Solis")
+        self.assertContains(response, "manager_filter=Solis")
+
+    def test_export_funds_allows_column_selection_and_reference_date(self):
+        response = self.client.get(
+            "/fundos/exportar/",
+            {
+                "fund_type": "FIDC",
+                "columns": ["fund_name", "pl", "pl_date"],
+            },
+            HTTP_HOST="127.0.0.1",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.headers["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        workbook = load_workbook(io.BytesIO(response.content))
+        worksheet = workbook["Fundos"]
+        self.assertEqual(
+            [cell.value for cell in worksheet[1]],
+            ["Fundo", "PL", "Data de referencia do PL"],
+        )
+        self.assertEqual(worksheet["A2"].value, "Fundo Solis Alpha")
+        self.assertEqual(worksheet["B2"].value, 1200000)
+        self.assertEqual(worksheet["C2"].value.date().isoformat(), "2026-05-01")
+        self.assertIsNone(worksheet["A3"].value)
 
     def test_toggle_user_fund_redirects(self):
         response = self.client.post(

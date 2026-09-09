@@ -3,12 +3,13 @@ import io
 import json
 import zipfile
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from urllib.request import urlopen
 
 from django.conf import settings
+from django.utils import timezone
 
 from .data_store import (
     add_client,
@@ -114,7 +115,7 @@ def sync_cvm_data() -> CVMSyncResult:
     refresh_linked_funds_from_catalog(catalog_rows)
 
     metadata = {
-        "imported_at": datetime.now().isoformat(timespec="seconds"),
+        "imported_at": timezone.now().isoformat(timespec="seconds"),
         "cadastro_url": CADASTRO_URL,
         "inf_diario_file": inf_member_name,
         "downloaded_files": downloaded_files,

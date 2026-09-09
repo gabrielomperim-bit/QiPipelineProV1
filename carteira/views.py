@@ -5,6 +5,8 @@ from django.conf import settings
 from django.http import Http404, HttpResponse
 from django.core.paginator import Paginator
 from django.shortcuts import redirect, render
+from django.utils import timezone
+from django.utils.dateparse import parse_date, parse_datetime
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
@@ -534,12 +536,17 @@ def catalogo_fundos(request):
     per_page_value = int(per_page) if per_page in {"20", "50", "100"} else 20
     paginator = Paginator(funds, per_page_value)
     page_obj = paginator.get_page(request.GET.get("page"))
+    sync_metadata = get_sync_metadata() or {}
+    reference_dates = [str(fund.get("pl_date", "")) for fund in funds if fund.get("pl_date")]
     context = {
         "search_form": search_form,
         "page_obj": page_obj,
         "funds": page_obj.object_list,
         "fund_count": len(funds),
         "total_pl": format_currency(total_pl),
+        "last_cvm_sync": _format_datetime(sync_metadata.get("imported_at", "")),
+        "latest_pl_reference": _format_date(max(reference_dates, default="")),
+        "active_filters": _build_active_filter_chips(request),
         "fund_type_options": fund_type_options,
         **catalog_filters,
         "per_page": str(per_page_value),
@@ -606,10 +613,24 @@ def exportar_fundos_excel(request):
     search_form = FundoCatalogoBuscaForm(request.GET or None)
     funds, _, _ = _get_filtered_catalog_funds(request, search_form)
 
+    column_definitions = {
+        "fund_name": ("Fundo", "fund_name", 52),
+        "cnpj": ("CNPJ", "cnpj", 20),
+        "pl": ("PL", "pl", 20),
+        "pl_date": ("Data de referencia do PL", "pl_date", 25),
+        "product_type": ("Tipo de fundo", "product_type", 18),
+        "manager_name": ("Gestora", "manager_name", 38),
+        "administrator_name": ("Administrador", "administrator_name", 38),
+        "status": ("Status", "status", 28),
+    }
+    selected_columns = [
+        column for column in request.GET.getlist("columns") if column in column_definitions
+    ] or list(column_definitions)
+
     workbook = Workbook()
     worksheet = workbook.active
     worksheet.title = "Fundos"
-    worksheet.append(["Fundo", "CNPJ", "PL", "Tipo de fundo", "Gestora", "Administrador"])
+    worksheet.append([column_definitions[column][0] for column in selected_columns])
 
     header_fill = PatternFill("solid", fgColor="0F1E3E")
     for cell in worksheet[1]:
@@ -618,23 +639,28 @@ def exportar_fundos_excel(request):
         cell.alignment = Alignment(vertical="center")
 
     for fund in funds:
-        worksheet.append(
-            [
-                fund.get("fund_name", ""),
-                fund.get("cnpj", ""),
-                float(parse_decimal(fund.get("pl", "0"))),
-                fund.get("product_type", ""),
-                fund.get("manager_name", ""),
-                fund.get("administrator_name", ""),
-            ]
-        )
+        row = []
+        for column in selected_columns:
+            value = fund.get(column_definitions[column][1], "")
+            if column == "pl":
+                value = float(parse_decimal(value))
+            elif column == "pl_date":
+                value = parse_date(str(value)) if value else None
+            row.append(value)
+        worksheet.append(row)
 
     worksheet.freeze_panes = "A2"
     worksheet.auto_filter.ref = worksheet.dimensions
-    for column, width in {"A": 52, "B": 20, "C": 20, "D": 18, "E": 38, "F": 38}.items():
-        worksheet.column_dimensions[column].width = width
-    for cell in worksheet["C"][1:]:
-        cell.number_format = 'R$ #,##0.00'
+    for index, column in enumerate(selected_columns, start=1):
+        worksheet.column_dimensions[worksheet.cell(row=1, column=index).column_letter].width = column_definitions[column][2]
+        if column == "pl":
+            for cell in worksheet.iter_cols(min_col=index, max_col=index, min_row=2):
+                for item in cell:
+                    item.number_format = 'R$ #,##0.00'
+        elif column == "pl_date":
+            for cell in worksheet.iter_cols(min_col=index, max_col=index, min_row=2):
+                for item in cell:
+                    item.number_format = "dd/mm/yyyy"
 
     output = BytesIO()
     workbook.save(output)
@@ -644,3 +670,70 @@ def exportar_fundos_excel(request):
     )
     response["Content-Disposition"] = 'attachment; filename="catalogo-de-fundos.xlsx"'
     return response
+
+
+def _format_datetime(value: object) -> str:
+    parsed = parse_datetime(str(value or ""))
+    if not parsed:
+        return str(value or "")
+    if timezone.is_aware(parsed):
+        parsed = timezone.localtime(parsed)
+    return parsed.strftime("%d/%m/%Y às %H:%M")
+
+
+def _format_date(value: object) -> str:
+    parsed = parse_date(str(value or ""))
+    return parsed.strftime("%d/%m/%Y") if parsed else str(value or "")
+
+
+def _query_without(request, *keys: str) -> str:
+    query = request.GET.copy()
+    query.pop("page", None)
+    for key in keys:
+        query.pop(key, None)
+    encoded = query.urlencode()
+    return f"{request.path}?{encoded}" if encoded else request.path
+
+
+def _build_active_filter_chips(request) -> list[dict[str, str]]:
+    chips = []
+    search_term = (request.GET.get("consulta") or "").strip()
+    if search_term:
+        chips.append({"label": f"Busca: {search_term}", "remove_url": _query_without(request, "consulta")})
+
+    fund_type = (request.GET.get("fund_type") or "").strip()
+    if fund_type:
+        chips.append({"label": f"Tipo: {fund_type}", "remove_url": _query_without(request, "fund_type")})
+
+    operator_labels = {"contains": "contém", "eq": "igual a", "neq": "diferente de"}
+    manager = (request.GET.get("manager_filter") or "").strip()
+    if manager:
+        operator = operator_labels.get(request.GET.get("manager_operator", "contains"), "contém")
+        chips.append(
+            {
+                "label": f"Gestora {operator}: {manager}",
+                "remove_url": _query_without(request, "manager_filter", "manager_operator"),
+            }
+        )
+
+    administrator = (request.GET.get("administrator_filter") or "").strip()
+    if administrator:
+        operator = operator_labels.get(request.GET.get("administrator_operator", "contains"), "contém")
+        chips.append(
+            {
+                "label": f"Administrador {operator}: {administrator}",
+                "remove_url": _query_without(request, "administrator_filter", "administrator_operator"),
+            }
+        )
+
+    sort_labels = {
+        "name": "Nome do fundo",
+        "pl_asc": "PL crescente",
+        "pl_desc": "PL decrescente",
+        "revenue_asc": "Receita crescente",
+        "revenue_desc": "Receita decrescente",
+    }
+    sort = (request.GET.get("sort") or "").strip()
+    if sort in sort_labels:
+        chips.append({"label": f"Ordem: {sort_labels[sort]}", "remove_url": _query_without(request, "sort")})
+    return chips
