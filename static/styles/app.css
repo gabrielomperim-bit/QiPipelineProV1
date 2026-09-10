@@ -379,6 +379,44 @@ button:hover {
     line-height: 1.35;
 }
 
+.sync-card-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.sync-refresh-form {
+    margin: 0;
+}
+
+.sync-refresh-button {
+    display: grid;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    place-items: center;
+    border: 1px solid #c9d9ee;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #1769d2;
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.sync-refresh-button:hover {
+    border-color: #1769d2;
+    background: #eef6ff;
+    transform: rotate(30deg);
+}
+
+.sync-refresh-button:focus-visible {
+    outline: 3px solid rgba(23, 105, 210, 0.25);
+    outline-offset: 2px;
+}
+
 .export-menu {
     position: relative;
     z-index: 20;

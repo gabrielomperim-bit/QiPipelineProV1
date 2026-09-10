@@ -51,7 +51,18 @@
             <small>Somatório dos fundos encontrados</small>
         </article>
         <article class="summary-card sync-card">
-            <span>Última sincronização CVM</span>
+            <div class="sync-card-heading">
+                <span>Última sincronização CVM</span>
+                <form method="post" action="{% url 'sincronizar_cvm' %}" class="sync-refresh-form">
+                    {% csrf_token %}
+                    <button
+                        type="submit"
+                        class="sync-refresh-button"
+                        title="Atualizar dados da CVM"
+                        aria-label="Atualizar dados da CVM"
+                    >&#x21bb;</button>
+                </form>
+            </div>
             <strong>{{ last_cvm_sync|default:"Não sincronizado" }}</strong>
             <small>Referência mais recente do PL: {{ latest_pl_reference|default:"Não disponível" }}</small>
         </article>

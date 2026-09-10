@@ -187,6 +187,13 @@ class WorkspaceSmokeTests(SimpleTestCase):
                 response = self.client.get(path, HTTP_HOST="127.0.0.1")
                 self.assertEqual(response.status_code, 200)
 
+    def test_catalogo_exibe_atalho_para_sincronizar_cvm(self):
+        response = self.client.get("/fundos/", HTTP_HOST="127.0.0.1")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'action="/cvm/"')
+        self.assertContains(response, 'aria-label="Atualizar dados da CVM"')
+
     def test_analise_comercial_processes_uploaded_workbooks(self):
         response = self.client.post(
             "/dashboard/comercial/",
