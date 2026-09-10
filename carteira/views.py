@@ -536,11 +536,16 @@ def catalogo_fundos(request):
     per_page_value = int(per_page) if per_page in {"20", "50", "100"} else 20
     paginator = Paginator(funds, per_page_value)
     page_obj = paginator.get_page(request.GET.get("page"))
+    pagination_params = request.GET.copy()
+    pagination_params.pop("page", None)
     sync_metadata = get_sync_metadata() or {}
     reference_dates = [str(fund.get("pl_date", "")) for fund in funds if fund.get("pl_date")]
     context = {
         "search_form": search_form,
         "page_obj": page_obj,
+        "pagination_range": paginator.get_elided_page_range(page_obj.number, on_each_side=2, on_ends=1),
+        "pagination_ellipsis": paginator.ELLIPSIS,
+        "pagination_query": pagination_params.urlencode(),
         "funds": page_obj.object_list,
         "fund_count": len(funds),
         "total_pl": format_currency(total_pl),

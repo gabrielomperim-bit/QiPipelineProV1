@@ -186,14 +186,23 @@
 
         <div class="pagination-bar">
             <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
-            <div class="pagination-links">
+            <nav class="pagination-links" aria-label="Paginação dos fundos">
                 {% if page_obj.has_previous %}
-                    <a href="?consulta={{ request.GET.consulta }}&fund_type={{ fund_type_filter }}&manager_operator={{ manager_operator }}&manager_filter={{ manager_filter }}&administrator_operator={{ administrator_operator }}&administrator_filter={{ administrator_filter }}&sort={{ sort }}&per_page={{ per_page }}&page={{ page_obj.previous_page_number }}">Anterior</a>
+                    <a class="pagination-direction" href="?{% if pagination_query %}{{ pagination_query }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Anterior</a>
                 {% endif %}
+                {% for page_number in pagination_range %}
+                    {% if page_number == pagination_ellipsis %}
+                        <span class="pagination-ellipsis" aria-hidden="true">{{ pagination_ellipsis }}</span>
+                    {% elif page_number == page_obj.number %}
+                        <span class="pagination-current" aria-current="page">{{ page_number }}</span>
+                    {% else %}
+                        <a href="?{% if pagination_query %}{{ pagination_query }}&amp;{% endif %}page={{ page_number }}" aria-label="Ir para a página {{ page_number }}">{{ page_number }}</a>
+                    {% endif %}
+                {% endfor %}
                 {% if page_obj.has_next %}
-                    <a href="?consulta={{ request.GET.consulta }}&fund_type={{ fund_type_filter }}&manager_operator={{ manager_operator }}&manager_filter={{ manager_filter }}&administrator_operator={{ administrator_operator }}&administrator_filter={{ administrator_filter }}&sort={{ sort }}&per_page={{ per_page }}&page={{ page_obj.next_page_number }}">Próxima</a>
+                    <a class="pagination-direction" href="?{% if pagination_query %}{{ pagination_query }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Próxima</a>
                 {% endif %}
-            </div>
+            </nav>
         </div>
     {% else %}
         <p class="empty-state">Nenhum fundo encontrado com os filtros atuais.</p>

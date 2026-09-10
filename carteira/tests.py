@@ -199,6 +199,8 @@ class WorkspaceSmokeTests(SimpleTestCase):
 
         self.assertContains(response, 'id="catalog-results"')
         self.assertContains(response, "scripts/catalogo-fundos.js")
+        self.assertContains(response, 'aria-label="Paginação dos fundos"')
+        self.assertContains(response, 'class="pagination-current" aria-current="page">1</span>')
 
     def test_analise_comercial_processes_uploaded_workbooks(self):
         response = self.client.post(

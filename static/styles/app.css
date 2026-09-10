@@ -862,7 +862,44 @@ button:hover {
 
 .pagination-links {
     display: flex;
-    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.pagination-links a,
+.pagination-current {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    height: 34px;
+    padding: 0 9px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    text-decoration: none;
+}
+
+.pagination-links a:hover {
+    border-color: var(--accent);
+    background: #eef6ff;
+}
+
+.pagination-current {
+    border-color: var(--accent);
+    color: #ffffff;
+    background: var(--accent);
+    font-weight: 700;
+}
+
+.pagination-links .pagination-direction {
+    padding-inline: 12px;
+}
+
+.pagination-ellipsis {
+    padding: 0 4px;
+    color: var(--muted);
 }
 
 .nested-pagination {
