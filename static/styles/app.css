@@ -985,6 +985,15 @@ th {
     box-shadow: inset 0 -1px 0 var(--line);
 }
 
+#catalog-results {
+    transition: opacity 0.15s ease;
+}
+
+#catalog-results.is-loading {
+    opacity: 0.45;
+    pointer-events: none;
+}
+
 td {
     font-size: 0.78rem;
 }

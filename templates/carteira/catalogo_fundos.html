@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Fundos | QITech{% endblock %}
 {% block page_title %}Catálogo de fundos{% endblock %}
@@ -149,6 +150,7 @@
         </div>
     {% endif %}
 
+    <div id="catalog-results" aria-live="polite">
     {% if funds %}
         <div class="table-wrapper">
             <table>
@@ -196,5 +198,7 @@
     {% else %}
         <p class="empty-state">Nenhum fundo encontrado com os filtros atuais.</p>
     {% endif %}
+    </div>
 </section>
+<script src="{% static 'scripts/catalogo-fundos.js' %}" defer></script>
 {% endblock %}

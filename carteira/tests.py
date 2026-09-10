@@ -194,6 +194,12 @@ class WorkspaceSmokeTests(SimpleTestCase):
         self.assertContains(response, 'action="/cvm/"')
         self.assertContains(response, 'aria-label="Atualizar dados da CVM"')
 
+    def test_catalogo_prepara_paginacao_sem_recarregar_a_pagina(self):
+        response = self.client.get("/fundos/", HTTP_HOST="127.0.0.1")
+
+        self.assertContains(response, 'id="catalog-results"')
+        self.assertContains(response, "scripts/catalogo-fundos.js")
+
     def test_analise_comercial_processes_uploaded_workbooks(self):
         response = self.client.post(
             "/dashboard/comercial/",
