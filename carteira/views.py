@@ -642,19 +642,18 @@ def adicionar_fundos_carteira(request):
 
 
 def minha_carteira(request):
-    memberships = list(UserFund.objects.filter(user=request.user))
-    selected_keys = {item.catalog_key for item in memberships}
-    search_term = (request.GET.get("consulta") or "").strip()
-    funds = []
-    for fund in list_catalog_funds(search_term=search_term, qitech_only=False):
-        key = _catalog_fund_key(fund)
-        if key not in selected_keys:
-            continue
-        fund["catalog_key"] = key
-        funds.append(fund)
+    selected_keys = set(UserFund.objects.filter(user=request.user).values_list("catalog_key", flat=True))
+    search_form = FundoCatalogoBuscaForm(request.GET or None)
+    funds, catalog_filters, fund_type_options = _get_filtered_catalog_funds(
+        request, search_form, allowed_keys=selected_keys
+    )
+    for fund in funds:
+        fund["catalog_key"] = _catalog_fund_key(fund)
 
     total_pl = sum((parse_decimal(fund.get("pl", "0")) for fund in funds), start=parse_decimal("0"))
-    paginator = Paginator(funds, 20)
+    per_page = request.GET.get("per_page") or "20"
+    per_page_value = int(per_page) if per_page in {"20", "50", "100"} else 20
+    paginator = Paginator(funds, per_page_value)
     page_obj = paginator.get_page(request.GET.get("page"))
     pagination_params = request.GET.copy()
     pagination_params.pop("page", None)
@@ -665,20 +664,27 @@ def minha_carteira(request):
             "funds": page_obj.object_list,
             "page_obj": page_obj,
             "fund_count": len(funds),
+            "portfolio_total_count": len(selected_keys),
             "total_pl": format_currency(total_pl),
-            "search_term": search_term,
+            "search_form": search_form,
+            "active_filters": _build_active_filter_chips(request),
+            "fund_type_options": fund_type_options,
+            "per_page": str(per_page_value),
             "pagination_range": paginator.get_elided_page_range(page_obj.number, on_each_side=2, on_ends=1),
             "pagination_ellipsis": paginator.ELLIPSIS,
             "pagination_query": pagination_params.urlencode(),
+            **catalog_filters,
         },
     )
 
 
-def _get_filtered_catalog_funds(request, search_form):
+def _get_filtered_catalog_funds(request, search_form, allowed_keys=None):
     search_term = ""
     if search_form.is_valid():
         search_term = search_form.cleaned_data.get("consulta") or ""
     funds = list_catalog_funds(search_term=search_term, qitech_only=False)
+    if allowed_keys is not None:
+        funds = [fund for fund in funds if _catalog_fund_key(fund) in allowed_keys]
     fund_type_filter = (request.GET.get("fund_type") or "").strip()
     manager_operator = (request.GET.get("manager_operator") or "contains").strip()
     manager_filter = (request.GET.get("manager_filter") or "").strip().lower()
@@ -733,6 +739,18 @@ def exportar_fundos_excel(request):
     search_form = FundoCatalogoBuscaForm(request.GET or None)
     funds, _, _ = _get_filtered_catalog_funds(request, search_form)
 
+    return _build_funds_excel_response(request, funds, "catalogo-de-fundos.xlsx")
+
+
+def exportar_minha_carteira_excel(request):
+    ensure_storage()
+    selected_keys = set(UserFund.objects.filter(user=request.user).values_list("catalog_key", flat=True))
+    search_form = FundoCatalogoBuscaForm(request.GET or None)
+    funds, _, _ = _get_filtered_catalog_funds(request, search_form, allowed_keys=selected_keys)
+    return _build_funds_excel_response(request, funds, "minha-carteira.xlsx")
+
+
+def _build_funds_excel_response(request, funds, filename):
     column_definitions = {
         "fund_name": ("Fundo", "fund_name", 52),
         "cnpj": ("CNPJ", "cnpj", 20),
@@ -788,7 +806,7 @@ def exportar_fundos_excel(request):
         output.getvalue(),
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
-    response["Content-Disposition"] = 'attachment; filename="catalogo-de-fundos.xlsx"'
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
 
 

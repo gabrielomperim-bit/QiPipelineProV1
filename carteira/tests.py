@@ -237,6 +237,34 @@ class WorkspaceSmokeTests(TestCase):
         self.assertContains(portfolio, "Fundo Solis Alpha")
         self.assertContains(portfolio, "Fundo Solis Beta")
 
+    def test_minha_carteira_tem_filtros_pdf_e_exportacao_propria(self):
+        self.client.post(
+            "/fundos/minha-carteira/adicionar/",
+            {"catalog_keys": ["C001", "C002"], "next": "/fundos/"},
+            HTTP_HOST="127.0.0.1",
+        )
+        portfolio = self.client.get(
+            "/minha-carteira/",
+            {"administrator_operator": "eq", "administrator_filter": "QITech Administracao"},
+            HTTP_HOST="127.0.0.1",
+        )
+        self.assertContains(portfolio, "Filtros de pesquisa")
+        self.assertContains(portfolio, "Exportar Excel")
+        self.assertContains(portfolio, "https://example.com/regulamento-alpha.pdf")
+        self.assertContains(portfolio, "Fundo Solis Alpha")
+        self.assertNotContains(portfolio, "Fundo Solis Beta")
+
+        export = self.client.get(
+            "/minha-carteira/exportar/",
+            {"fund_type": "FIDC", "columns": ["fund_name", "pl_date"]},
+            HTTP_HOST="127.0.0.1",
+        )
+        workbook = load_workbook(io.BytesIO(export.content))
+        worksheet = workbook["Fundos"]
+        self.assertEqual([cell.value for cell in worksheet[1]], ["Fundo", "Data de referencia do PL"])
+        self.assertEqual(worksheet["A2"].value, "Fundo Solis Alpha")
+        self.assertIsNone(worksheet["A3"].value)
+
     def test_catalogo_exibe_atalho_para_sincronizar_cvm(self):
         response = self.client.get("/fundos/", HTTP_HOST="127.0.0.1")
 

@@ -7,6 +7,26 @@
 <section class="content-card">
     <div class="section-header portfolio-actions-header">
         <a class="button-link" href="{% url 'catalogo_fundos' %}">Adicionar fundos</a>
+        <details class="export-menu">
+            <summary class="button-link export-button">Exportar Excel</summary>
+            <form method="get" action="{% url 'exportar_minha_carteira_excel' %}" class="export-options">
+                {% if request.GET.consulta %}<input type="hidden" name="consulta" value="{{ request.GET.consulta }}">{% endif %}
+                {% if fund_type_filter %}<input type="hidden" name="fund_type" value="{{ fund_type_filter }}">{% endif %}
+                {% if manager_filter %}<input type="hidden" name="manager_operator" value="{{ manager_operator }}"><input type="hidden" name="manager_filter" value="{{ manager_filter }}">{% endif %}
+                {% if administrator_filter %}<input type="hidden" name="administrator_operator" value="{{ administrator_operator }}"><input type="hidden" name="administrator_filter" value="{{ administrator_filter }}">{% endif %}
+                {% if sort %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
+                <strong>Colunas do arquivo</strong>
+                <label><input type="checkbox" name="columns" value="fund_name" checked> Fundo</label>
+                <label><input type="checkbox" name="columns" value="cnpj" checked> CNPJ</label>
+                <label><input type="checkbox" name="columns" value="pl" checked> PL</label>
+                <label><input type="checkbox" name="columns" value="pl_date" checked> Data de referência</label>
+                <label><input type="checkbox" name="columns" value="product_type" checked> Tipo de fundo</label>
+                <label><input type="checkbox" name="columns" value="manager_name" checked> Gestora</label>
+                <label><input type="checkbox" name="columns" value="administrator_name" checked> Administrador</label>
+                <label><input type="checkbox" name="columns" value="status"> Status</label>
+                <button type="submit">Baixar planilha</button>
+            </form>
+        </details>
     </div>
 
     <div class="fund-summary-grid portfolio-summary-grid">
@@ -20,14 +40,31 @@
         </article>
     </div>
 
-    <form method="get" class="portfolio-search">
-        <label for="portfolio-search">Pesquisar na minha carteira</label>
-        <div>
-            <input id="portfolio-search" type="search" name="consulta" value="{{ search_term }}" placeholder="Nome, CNPJ, gestora ou administrador">
-            <button type="submit">Pesquisar</button>
-            {% if search_term %}<a class="clear-link" href="{% url 'minha_carteira' %}">Limpar</a>{% endif %}
+    <details class="filters-panel" {% if request.GET %}open{% endif %}>
+        <summary>
+            <span class="filters-summary-copy"><strong>Filtros de pesquisa</strong><small>Refine a carteira por fundo, tipo, gestora ou administrador.</small></span>
+            <span class="filters-toggle-label" aria-hidden="true"><span class="label-show">Mostrar filtros</span><span class="label-hide">Recolher filtros</span><span class="filters-chevron">⌄</span></span>
+        </summary>
+        <form method="get" class="stack-form search-box filters-form">
+            {{ search_form.as_p }}
+            <div class="filters-grid">
+                <p><label for="fund_type">Tipo de fundo</label><select name="fund_type" id="fund_type"><option value="">Todos</option>{% for option in fund_type_options %}<option value="{{ option }}" {% if fund_type_filter == option %}selected{% endif %}>{{ option }}</option>{% endfor %}</select></p>
+                <p><label for="manager_filter">Gestora</label><select name="manager_operator" id="manager_operator"><option value="contains" {% if manager_operator == "contains" %}selected{% endif %}>contem</option><option value="eq" {% if manager_operator == "eq" %}selected{% endif %}>igual a</option><option value="neq" {% if manager_operator == "neq" %}selected{% endif %}>diferente de</option></select><input type="text" name="manager_filter" id="manager_filter" value="{{ manager_filter }}" placeholder="Filtrar gestora"></p>
+                <p><label for="administrator_filter">Administrador</label><select name="administrator_operator" id="administrator_operator"><option value="contains" {% if administrator_operator == "contains" %}selected{% endif %}>contem</option><option value="eq" {% if administrator_operator == "eq" %}selected{% endif %}>igual a</option><option value="neq" {% if administrator_operator == "neq" %}selected{% endif %}>diferente de</option></select><input type="text" name="administrator_filter" id="administrator_filter" value="{{ administrator_filter }}" placeholder="Filtrar administrador"></p>
+                <p><label for="sort">Ordenar</label><select name="sort" id="sort"><option value="">Padrão</option><option value="name" {% if sort == "name" %}selected{% endif %}>Nome do fundo</option><option value="pl_asc" {% if sort == "pl_asc" %}selected{% endif %}>PL crescente</option><option value="pl_desc" {% if sort == "pl_desc" %}selected{% endif %}>PL decrescente</option></select></p>
+                <p><label for="per_page">Por página</label><select name="per_page" id="per_page"><option value="20" {% if per_page == "20" %}selected{% endif %}>20</option><option value="50" {% if per_page == "50" %}selected{% endif %}>50</option><option value="100" {% if per_page == "100" %}selected{% endif %}>100</option></select></p>
+            </div>
+            <div class="form-actions"><button type="submit">Aplicar filtros</button><a class="clear-link" href="{% url 'minha_carteira' %}">Limpar</a></div>
+        </form>
+    </details>
+
+    {% if active_filters %}
+        <div class="active-filters" aria-label="Filtros aplicados">
+            <span class="active-filters-title">Filtros aplicados</span>
+            {% for filter in active_filters %}<a class="filter-chip" href="{{ filter.remove_url }}" title="Remover {{ filter.label }}">{{ filter.label }} <span aria-hidden="true">×</span></a>{% endfor %}
+            <a class="clear-all-filters" href="{% url 'minha_carteira' %}">Limpar todos</a>
         </div>
-    </form>
+    {% endif %}
 
     {% if funds %}
         <div class="table-wrapper">
@@ -36,7 +73,7 @@
                 <tbody>
                 {% for fund in funds %}
                     <tr>
-                        <td>{{ fund.fund_name }}</td>
+                        <td><div class="fund-name-cell"><span>{{ fund.fund_name }}</span><a class="icon-link" href="{{ fund.regulation_url }}" target="_blank" rel="noreferrer" download title="Baixar regulamento em PDF" aria-label="Baixar regulamento de {{ fund.fund_name }}">&#x2B07;</a></div></td>
                         <td>{{ fund.cnpj }}</td>
                         <td>{{ fund.formatted_pl }}</td>
                         <td>{{ fund.product_type }}</td>
@@ -69,9 +106,15 @@
         {% endif %}
     {% else %}
         <div class="empty-state portfolio-empty">
+            {% if portfolio_total_count %}
+            <h3>Nenhum fundo encontrado</h3>
+            <p>Revise ou limpe os filtros aplicados.</p>
+            <a class="button-link" href="{% url 'minha_carteira' %}">Limpar filtros</a>
+            {% else %}
             <h3>Sua carteira ainda está vazia</h3>
             <p>Pesquise no catálogo e use o botão “Adicionar”.</p>
             <a class="button-link" href="{% url 'catalogo_fundos' %}">Explorar fundos</a>
+            {% endif %}
         </div>
     {% endif %}
 </section>
