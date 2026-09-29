@@ -24,6 +24,7 @@ urlpatterns = [
     path("fundos/", views.catalogo_fundos, name="catalogo_fundos"),
     path("minha-carteira/", views.minha_carteira, name="minha_carteira"),
     path("fundos/minha-carteira/alternar/", views.alternar_fundo_carteira, name="alternar_fundo_carteira"),
+    path("fundos/minha-carteira/adicionar/", views.adicionar_fundos_carteira, name="adicionar_fundos_carteira"),
     path("fundos/exportar/", views.exportar_fundos_excel, name="exportar_fundos_excel"),
     path("importar/", views.importar_carteira, name="importar_carteira"),
     path("cvm/", views.sincronizar_cvm, name="sincronizar_cvm"),

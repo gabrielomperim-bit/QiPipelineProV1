@@ -62,7 +62,7 @@ docker compose ps
 docker compose logs --tail=100
 ```
 
-Crie Kathleen, Cristal e Julia. O comando mostra uma senha temporaria para cada uma apenas nessa execucao:
+Crie Kathleen, Cristal, Julia e Gabriel. O comando mostra uma senha temporaria para cada conta apenas nessa execucao:
 
 ```bash
 docker compose exec web python manage.py create_workspace_users

@@ -9,6 +9,7 @@ DEFAULT_USERS = {
     "kathleen": "Kathleen",
     "cristal": "Cristal",
     "julia": "Julia",
+    "gabriel": "Gabriel",
 }
 
 

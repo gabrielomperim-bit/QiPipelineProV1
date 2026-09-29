@@ -5,12 +5,7 @@
 
 {% block content %}
 <section class="content-card">
-    <div class="section-header">
-        <div>
-            <p class="eyebrow">Carteira de {{ request.user.first_name|default:request.user.username }}</p>
-            <h2>Fundos selecionados por você</h2>
-            <p class="muted">Esta área é individual e não altera a carteira das outras pessoas.</p>
-        </div>
+    <div class="section-header portfolio-actions-header">
         <a class="button-link" href="{% url 'catalogo_fundos' %}">Adicionar fundos</a>
     </div>
 

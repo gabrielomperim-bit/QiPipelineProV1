@@ -607,6 +607,40 @@ def alternar_fundo_carteira(request):
     return redirect(next_url)
 
 
+@require_POST
+def adicionar_fundos_carteira(request):
+    requested_keys = list(dict.fromkeys(key.strip() for key in request.POST.getlist("catalog_keys") if key.strip()))[:100]
+    catalog_by_key = {
+        _catalog_fund_key(fund): fund
+        for fund in list_catalog_funds(search_term="", qitech_only=False)
+        if _catalog_fund_key(fund)
+    }
+    valid_funds = [catalog_by_key[key] for key in requested_keys if key in catalog_by_key]
+    existing_keys = set(
+        UserFund.objects.filter(user=request.user, catalog_key__in=requested_keys).values_list("catalog_key", flat=True)
+    )
+    new_memberships = [
+        UserFund(
+            user=request.user,
+            catalog_key=_catalog_fund_key(fund),
+            fund_name=str(fund.get("fund_name", "")),
+            cnpj=str(fund.get("cnpj", "")),
+        )
+        for fund in valid_funds
+        if _catalog_fund_key(fund) not in existing_keys
+    ]
+    UserFund.objects.bulk_create(new_memberships, ignore_conflicts=True)
+    portfolio_count = UserFund.objects.filter(user=request.user).count()
+
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JsonResponse({"added_count": len(new_memberships), "portfolio_count": portfolio_count})
+
+    next_url = request.POST.get("next") or "/fundos/"
+    if not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        next_url = "/fundos/"
+    return redirect(next_url)
+
+
 def minha_carteira(request):
     memberships = list(UserFund.objects.filter(user=request.user))
     selected_keys = {item.catalog_key for item in memberships}

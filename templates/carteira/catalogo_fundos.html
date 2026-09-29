@@ -157,10 +157,19 @@
 
     <div id="catalog-results" aria-live="polite">
     {% if funds %}
+        <form method="post" action="{% url 'adicionar_fundos_carteira' %}" id="bulk-portfolio-form" class="bulk-portfolio-bar">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <span><strong id="bulk-selected-count">0</strong> fundo(s) selecionado(s)</span>
+            <button type="submit" id="bulk-add-button" disabled>Adicionar selecionados</button>
+        </form>
         <div class="table-wrapper">
             <table>
                 <thead>
                     <tr>
+                        <th class="selection-column">
+                            <input type="checkbox" id="select-visible-funds" aria-label="Selecionar todos os fundos visíveis disponíveis">
+                        </th>
                         <th>Fundo</th>
                         <th>CNPJ</th>
                         <th>PL</th>
@@ -173,6 +182,17 @@
                 <tbody>
                     {% for fund in funds %}
                         <tr>
+                            <td class="selection-column">
+                                <input
+                                    type="checkbox"
+                                    class="fund-selection"
+                                    name="catalog_keys"
+                                    value="{{ fund.catalog_key }}"
+                                    form="bulk-portfolio-form"
+                                    aria-label="Selecionar {{ fund.fund_name }}"
+                                    {% if fund.in_user_portfolio %}checked disabled title="Já está na sua carteira"{% endif %}
+                                >
+                            </td>
                             <td>
                                 <div class="fund-name-cell">
                                     <span>{{ fund.fund_name }}</span>

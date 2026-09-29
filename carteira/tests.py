@@ -222,7 +222,20 @@ class WorkspaceSmokeTests(TestCase):
         user_model = get_user_model()
         self.assertTrue(user_model.objects.get(username="cristal").has_usable_password())
         self.assertTrue(user_model.objects.get(username="julia").has_usable_password())
+        self.assertTrue(user_model.objects.get(username="gabriel").has_usable_password())
         self.assertIn("Credenciais temporarias", output.getvalue())
+
+    def test_adiciona_varios_fundos_na_carteira(self):
+        response = self.client.post(
+            "/fundos/minha-carteira/adicionar/",
+            {"catalog_keys": ["C001", "C002"], "next": "/fundos/"},
+            HTTP_HOST="127.0.0.1",
+        )
+
+        self.assertRedirects(response, "/fundos/", fetch_redirect_response=False)
+        portfolio = self.client.get("/minha-carteira/", HTTP_HOST="127.0.0.1")
+        self.assertContains(portfolio, "Fundo Solis Alpha")
+        self.assertContains(portfolio, "Fundo Solis Beta")
 
     def test_catalogo_exibe_atalho_para_sincronizar_cvm(self):
         response = self.client.get("/fundos/", HTTP_HOST="127.0.0.1")
