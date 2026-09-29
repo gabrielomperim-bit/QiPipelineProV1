@@ -2,11 +2,13 @@ from io import BytesIO
 from pathlib import Path
 
 from django.conf import settings
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.core.paginator import Paginator
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.http import require_POST
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
@@ -65,6 +67,11 @@ from .services.data_store import (
 )
 from .services.importers import import_clients_from_file
 from .services.public_company import enrich_company_profiles_for_client
+from .models import UserFund
+
+
+def _catalog_fund_key(fund):
+    return str(fund.get("cvm_class_id") or fund.get("cnpj") or fund.get("cvm_fund_id") or "").strip()
 
 
 def _matches_text_filter(value: str, operator: str, filter_value: str) -> bool:
@@ -530,6 +537,12 @@ def catalogo_fundos(request):
     ensure_storage()
     search_form = FundoCatalogoBuscaForm(request.GET or None)
     funds, catalog_filters, fund_type_options = _get_filtered_catalog_funds(request, search_form)
+    selected_fund_keys = set(
+        UserFund.objects.filter(user=request.user).values_list("catalog_key", flat=True)
+    )
+    for fund in funds:
+        fund["catalog_key"] = _catalog_fund_key(fund)
+        fund["in_user_portfolio"] = fund["catalog_key"] in selected_fund_keys
     total_pl = sum((parse_decimal(fund.get("pl", "0")) for fund in funds), start=parse_decimal("0"))
     per_page = request.GET.get("per_page") or "20"
 
@@ -548,6 +561,7 @@ def catalogo_fundos(request):
         "pagination_query": pagination_params.urlencode(),
         "funds": page_obj.object_list,
         "fund_count": len(funds),
+        "user_portfolio_count": len(selected_fund_keys),
         "total_pl": format_currency(total_pl),
         "last_cvm_sync": _format_datetime(sync_metadata.get("imported_at", "")),
         "latest_pl_reference": _format_date(max(reference_dates, default="")),
@@ -557,6 +571,73 @@ def catalogo_fundos(request):
         "per_page": str(per_page_value),
     }
     return render(request, "carteira/catalogo_fundos.html", context)
+
+
+@require_POST
+def alternar_fundo_carteira(request):
+    catalog_key = (request.POST.get("catalog_key") or "").strip()
+    fund = next((item for item in list_catalog_funds(search_term="", qitech_only=False) if _catalog_fund_key(item) == catalog_key), None)
+    if not fund:
+        raise Http404("Fundo nao encontrado no catalogo da CVM.")
+
+    existing = UserFund.objects.filter(user=request.user, catalog_key=catalog_key).first()
+    if existing:
+        existing.delete()
+        added = False
+    else:
+        UserFund.objects.create(
+            user=request.user,
+            catalog_key=catalog_key,
+            fund_name=str(fund.get("fund_name", "")),
+            cnpj=str(fund.get("cnpj", "")),
+        )
+        added = True
+
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JsonResponse(
+            {
+                "added": added,
+                "portfolio_count": UserFund.objects.filter(user=request.user).count(),
+            }
+        )
+
+    next_url = request.POST.get("next") or "/fundos/"
+    if not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        next_url = "/fundos/"
+    return redirect(next_url)
+
+
+def minha_carteira(request):
+    memberships = list(UserFund.objects.filter(user=request.user))
+    selected_keys = {item.catalog_key for item in memberships}
+    search_term = (request.GET.get("consulta") or "").strip()
+    funds = []
+    for fund in list_catalog_funds(search_term=search_term, qitech_only=False):
+        key = _catalog_fund_key(fund)
+        if key not in selected_keys:
+            continue
+        fund["catalog_key"] = key
+        funds.append(fund)
+
+    total_pl = sum((parse_decimal(fund.get("pl", "0")) for fund in funds), start=parse_decimal("0"))
+    paginator = Paginator(funds, 20)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    pagination_params = request.GET.copy()
+    pagination_params.pop("page", None)
+    return render(
+        request,
+        "carteira/minha_carteira.html",
+        {
+            "funds": page_obj.object_list,
+            "page_obj": page_obj,
+            "fund_count": len(funds),
+            "total_pl": format_currency(total_pl),
+            "search_term": search_term,
+            "pagination_range": paginator.get_elided_page_range(page_obj.number, on_each_side=2, on_ends=1),
+            "pagination_ellipsis": paginator.ELLIPSIS,
+            "pagination_query": pagination_params.urlencode(),
+        },
+    )
 
 
 def _get_filtered_catalog_funds(request, search_form):

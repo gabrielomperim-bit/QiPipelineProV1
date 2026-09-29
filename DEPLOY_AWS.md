@@ -47,19 +47,11 @@ Gere a chave Django:
 openssl rand -hex 32
 ```
 
-Gere um hash para cada senha (a senha nao fica salva no arquivo):
-
-```bash
-docker run --rm caddy:2-alpine caddy hash-password --plaintext 'SENHA-FORTE-AQUI'
-```
-
-Edite `.env`, substituindo dominio, chave, usuarios e os tres hashes:
+Edite `.env`, substituindo dominio e chave:
 
 ```bash
 nano .env
 ```
-
-Mantenha os hashes entre aspas simples para preservar os caracteres `$`.
 
 ## Inicializacao
 
@@ -68,6 +60,18 @@ docker compose config
 docker compose up -d --build
 docker compose ps
 docker compose logs --tail=100
+```
+
+Crie Kathleen, Cristal e Julia. O comando mostra uma senha temporaria para cada uma apenas nessa execucao:
+
+```bash
+docker compose exec web python manage.py create_workspace_users
+```
+
+Cada pessoa pode trocar a propria senha pelo link `Senha` no cabecalho. Para redefinir as tres senhas no futuro:
+
+```bash
+docker compose exec web python manage.py create_workspace_users --reset-passwords
 ```
 
 Acesse `https://SEU-IP-COM-HIFENS.sslip.io`.
@@ -79,3 +83,5 @@ git pull --ff-only
 docker compose up -d --build
 docker image prune -f
 ```
+
+As contas e as carteiras individuais ficam em `persistent/data/db.sqlite3`, junto dos dados que devem entrar no backup.

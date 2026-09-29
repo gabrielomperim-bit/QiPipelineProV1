@@ -1,14 +1,29 @@
+from django.contrib.auth import views as auth_views
+from django.contrib.auth.decorators import login_not_required
 from django.urls import path
+from django.urls import reverse_lazy
 
 from . import views
 
 urlpatterns = [
+    path("entrar/", login_not_required(auth_views.LoginView.as_view(template_name="registration/login.html")), name="login"),
+    path("sair/", auth_views.LogoutView.as_view(), name="logout"),
+    path(
+        "minha-senha/",
+        auth_views.PasswordChangeView.as_view(
+            template_name="registration/password_change.html",
+            success_url=reverse_lazy("minha_carteira"),
+        ),
+        name="password_change",
+    ),
     path("", views.catalogo_fundos, name="home"),
     path("visao-geral/", views.dashboard, name="dashboard"),
     path("dashboard/usuario/", views.dashboard_usuario, name="dashboard_usuario"),
     path("dashboard/comercial/", views.analise_comercial, name="analise_comercial"),
     path("clientes/", views.lista_clientes, name="lista_clientes"),
     path("fundos/", views.catalogo_fundos, name="catalogo_fundos"),
+    path("minha-carteira/", views.minha_carteira, name="minha_carteira"),
+    path("fundos/minha-carteira/alternar/", views.alternar_fundo_carteira, name="alternar_fundo_carteira"),
     path("fundos/exportar/", views.exportar_fundos_excel, name="exportar_fundos_excel"),
     path("importar/", views.importar_carteira, name="importar_carteira"),
     path("cvm/", views.sincronizar_cvm, name="sincronizar_cvm"),

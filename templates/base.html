@@ -19,9 +19,17 @@
                 </span>
             </a>
             <nav class="top-links" aria-label="Navegação principal">
-                <a class="active" href="{% url 'catalogo_fundos' %}">Fundos</a>
+                <a{% if request.resolver_match.url_name == "catalogo_fundos" or request.resolver_match.url_name == "home" %} class="active"{% endif %} href="{% url 'catalogo_fundos' %}">Fundos</a>
+                <a{% if request.resolver_match.url_name == "minha_carteira" %} class="active"{% endif %} href="{% url 'minha_carteira' %}">Minha carteira</a>
             </nav>
-            <span class="top-context">Workspace comercial</span>
+            <div class="top-user">
+                <span>{{ request.user.first_name|default:request.user.username }}</span>
+                <a class="top-password" href="{% url 'password_change' %}">Senha</a>
+                <form method="post" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="top-logout">Sair</button>
+                </form>
+            </div>
         </header>
         <main class="main-content">
             <header class="workspace-bar">

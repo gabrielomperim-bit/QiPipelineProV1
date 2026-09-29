@@ -67,6 +67,11 @@
             <strong>{{ last_cvm_sync|default:"Não sincronizado" }}</strong>
             <small>Referência mais recente do PL: {{ latest_pl_reference|default:"Não disponível" }}</small>
         </article>
+        <article class="summary-card portfolio-card">
+            <span>Na minha carteira</span>
+            <strong id="portfolio-count">{{ user_portfolio_count }}</strong>
+            <small><a href="{% url 'minha_carteira' %}">Visualizar minha seleção</a></small>
+        </article>
     </div>
 
     <details class="filters-panel" {% if request.GET %}open{% endif %}>
@@ -162,6 +167,7 @@
                         <th>Tipo de fundo</th>
                         <th>Gestora</th>
                         <th>Administrador</th>
+                        <th class="portfolio-column">Minha carteira</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -178,6 +184,16 @@
                             <td>{{ fund.product_type }}</td>
                             <td>{{ fund.manager_name|default:"-" }}</td>
                             <td>{{ fund.administrator_name|default:"-" }}</td>
+                            <td class="portfolio-column">
+                                <form method="post" action="{% url 'alternar_fundo_carteira' %}" class="portfolio-toggle-form">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="catalog_key" value="{{ fund.catalog_key }}">
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <button type="submit" class="portfolio-toggle{% if fund.in_user_portfolio %} is-selected{% endif %}" aria-pressed="{% if fund.in_user_portfolio %}true{% else %}false{% endif %}">
+                                        {% if fund.in_user_portfolio %}✓ Na carteira{% else %}+ Adicionar{% endif %}
+                                    </button>
+                                </form>
+                            </td>
                         </tr>
                     {% endfor %}
                 </tbody>

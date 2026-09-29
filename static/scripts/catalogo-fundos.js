@@ -45,5 +45,32 @@
         loadResults(link.href, true);
     });
 
+    document.addEventListener("submit", async (event) => {
+        const form = event.target.closest(".portfolio-toggle-form");
+        if (!form) return;
+        event.preventDefault();
+
+        const button = form.querySelector("button");
+        button.disabled = true;
+        try {
+            const response = await fetch(form.action, {
+                method: "POST",
+                body: new FormData(form),
+                headers: { "X-Requested-With": "XMLHttpRequest" },
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const result = await response.json();
+            button.classList.toggle("is-selected", result.added);
+            button.setAttribute("aria-pressed", result.added ? "true" : "false");
+            button.textContent = result.added ? "✓ Na carteira" : "+ Adicionar";
+            const counter = document.querySelector("#portfolio-count");
+            if (counter) counter.textContent = result.portfolio_count;
+        } catch (error) {
+            form.submit();
+        } finally {
+            button.disabled = false;
+        }
+    });
+
     window.addEventListener("popstate", () => loadResults(window.location.href, false));
 })();

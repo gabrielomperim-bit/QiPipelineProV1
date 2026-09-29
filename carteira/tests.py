@@ -5,14 +5,16 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
+from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import SimpleTestCase, override_settings
+from django.core.management import call_command
+from django.test import TestCase, override_settings
 from openpyxl import Workbook, load_workbook
 
 from .services.data_store import add_client, add_fund, ensure_storage
 
 
-class WorkspaceSmokeTests(SimpleTestCase):
+class WorkspaceSmokeTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -82,6 +84,10 @@ class WorkspaceSmokeTests(SimpleTestCase):
         cls.settings_override.disable()
         cls.temp_root.cleanup()
         super().tearDownClass()
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="kathleen", password="teste-seguro")
+        self.client.force_login(self.user)
 
     @classmethod
     def _write_cvm_cache(cls, cvm_cache_dir: Path) -> None:
@@ -186,6 +192,37 @@ class WorkspaceSmokeTests(SimpleTestCase):
             with self.subTest(path=path):
                 response = self.client.get(path, HTTP_HOST="127.0.0.1")
                 self.assertEqual(response.status_code, 200)
+
+    def test_catalogo_exige_login(self):
+        self.client.logout()
+        self.assertEqual(self.client.get("/entrar/", HTTP_HOST="127.0.0.1").status_code, 200)
+        response = self.client.get("/fundos/", HTTP_HOST="127.0.0.1")
+
+        self.assertRedirects(response, "/entrar/?next=/fundos/", fetch_redirect_response=False)
+
+    def test_carteiras_sao_separadas_por_usuario(self):
+        response = self.client.post(
+            "/fundos/minha-carteira/alternar/",
+            {"catalog_key": "C001", "next": "/fundos/"},
+            HTTP_HOST="127.0.0.1",
+        )
+        self.assertRedirects(response, "/fundos/", fetch_redirect_response=False)
+        self.assertContains(self.client.get("/minha-carteira/", HTTP_HOST="127.0.0.1"), "Fundo Solis Alpha")
+
+        other_user = get_user_model().objects.create_user(username="cristal", password="outro-seguro")
+        self.client.force_login(other_user)
+        other_portfolio = self.client.get("/minha-carteira/", HTTP_HOST="127.0.0.1")
+        self.assertNotContains(other_portfolio, "Fundo Solis Alpha")
+        self.assertContains(other_portfolio, "Sua carteira ainda está vazia")
+
+    def test_comando_cria_usuarios_iniciais(self):
+        output = io.StringIO()
+        call_command("create_workspace_users", stdout=output)
+
+        user_model = get_user_model()
+        self.assertTrue(user_model.objects.get(username="cristal").has_usable_password())
+        self.assertTrue(user_model.objects.get(username="julia").has_usable_password())
+        self.assertIn("Credenciais temporarias", output.getvalue())
 
     def test_catalogo_exibe_atalho_para_sincronizar_cvm(self):
         response = self.client.get("/fundos/", HTTP_HOST="127.0.0.1")

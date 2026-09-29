@@ -1174,6 +1174,141 @@ tbody tr:hover td {
     border-radius: inherit;
 }
 
+.top-user {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.top-user form {
+    margin: 0;
+}
+
+.top-logout {
+    padding: 6px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: transparent;
+    font-size: 0.72rem;
+}
+
+.top-password {
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.72rem;
+    text-decoration: none;
+}
+
+.top-password:hover {
+    color: #ffffff;
+}
+
+.top-logout:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.portfolio-card a {
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.portfolio-column {
+    min-width: 125px;
+    text-align: center;
+}
+
+.portfolio-toggle-form,
+.portfolio-toggle-form button,
+td form {
+    margin: 0;
+}
+
+.portfolio-toggle,
+.portfolio-remove {
+    min-width: 104px;
+    padding: 8px 10px;
+    border: 1px solid #bfd0e8;
+    color: var(--accent);
+    background: #ffffff;
+    font-size: 0.74rem;
+}
+
+.portfolio-toggle.is-selected {
+    border-color: #8bc9ad;
+    color: #087044;
+    background: #edf9f3;
+}
+
+.portfolio-remove {
+    min-width: auto;
+    color: #a43434;
+    border-color: #efcaca;
+}
+
+.portfolio-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.portfolio-search {
+    margin: 22px 0 16px;
+}
+
+.portfolio-search > div {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 7px;
+}
+
+.portfolio-search input {
+    flex: 1;
+}
+
+.portfolio-empty {
+    padding: 44px 20px;
+    text-align: center;
+}
+
+.login-page {
+    display: grid;
+    min-height: 100vh;
+    padding: 24px;
+    place-items: center;
+    background: linear-gradient(145deg, #0f1e3e 0%, #1f4f9c 100%);
+}
+
+.login-card {
+    width: min(100%, 420px);
+    padding: 36px;
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: 0 28px 70px rgba(0, 0, 0, 0.28);
+}
+
+.login-card .brand-mark {
+    margin-bottom: 22px;
+}
+
+.login-card h1 {
+    margin: 4px 0 8px;
+}
+
+.login-card form {
+    margin-top: 24px;
+}
+
+.login-error {
+    padding: 10px 12px;
+    border-radius: 8px;
+    color: #9f2525;
+    background: #fff0f0;
+}
+
+.password-card {
+    max-width: 620px;
+}
+
 @media (max-width: 900px) {
     .page-shell {
         display: flex;
@@ -1209,6 +1344,18 @@ tbody tr:hover td {
     .top-context::after {
         content: "Comercial";
         font-size: 0.68rem;
+    }
+
+    .top-user {
+        font-size: 0;
+    }
+
+    .top-user .top-logout {
+        font-size: 0.72rem;
+    }
+
+    .portfolio-summary-grid {
+        grid-template-columns: 1fr;
     }
 
     .hero-card {

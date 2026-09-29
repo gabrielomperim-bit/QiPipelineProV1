@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Minha carteira | QITech{% endblock %}
+{% block page_title %}Minha carteira{% endblock %}
+
+{% block content %}
+<section class="content-card">
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">Carteira de {{ request.user.first_name|default:request.user.username }}</p>
+            <h2>Fundos selecionados por você</h2>
+            <p class="muted">Esta área é individual e não altera a carteira das outras pessoas.</p>
+        </div>
+        <a class="button-link" href="{% url 'catalogo_fundos' %}">Adicionar fundos</a>
+    </div>
+
+    <div class="fund-summary-grid portfolio-summary-grid">
+        <article class="summary-card">
+            <span>Quantidade de fundos</span>
+            <strong>{{ fund_count }}</strong>
+        </article>
+        <article class="summary-card accent">
+            <span>PL total</span>
+            <strong>{{ total_pl }}</strong>
+        </article>
+    </div>
+
+    <form method="get" class="portfolio-search">
+        <label for="portfolio-search">Pesquisar na minha carteira</label>
+        <div>
+            <input id="portfolio-search" type="search" name="consulta" value="{{ search_term }}" placeholder="Nome, CNPJ, gestora ou administrador">
+            <button type="submit">Pesquisar</button>
+            {% if search_term %}<a class="clear-link" href="{% url 'minha_carteira' %}">Limpar</a>{% endif %}
+        </div>
+    </form>
+
+    {% if funds %}
+        <div class="table-wrapper">
+            <table>
+                <thead><tr><th>Fundo</th><th>CNPJ</th><th>PL</th><th>Tipo</th><th>Gestora</th><th>Administrador</th><th></th></tr></thead>
+                <tbody>
+                {% for fund in funds %}
+                    <tr>
+                        <td>{{ fund.fund_name }}</td>
+                        <td>{{ fund.cnpj }}</td>
+                        <td>{{ fund.formatted_pl }}</td>
+                        <td>{{ fund.product_type }}</td>
+                        <td>{{ fund.manager_name|default:"-" }}</td>
+                        <td>{{ fund.administrator_name|default:"-" }}</td>
+                        <td>
+                            <form method="post" action="{% url 'alternar_fundo_carteira' %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="catalog_key" value="{{ fund.catalog_key }}">
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <button type="submit" class="portfolio-remove">Remover</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div class="pagination-bar">
+            <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+            <nav class="pagination-links" aria-label="Paginação da minha carteira">
+                {% for page_number in pagination_range %}
+                    {% if page_number == pagination_ellipsis %}<span class="pagination-ellipsis">{{ pagination_ellipsis }}</span>
+                    {% elif page_number == page_obj.number %}<span class="pagination-current" aria-current="page">{{ page_number }}</span>
+                    {% else %}<a href="?{% if pagination_query %}{{ pagination_query }}&amp;{% endif %}page={{ page_number }}">{{ page_number }}</a>{% endif %}
+                {% endfor %}
+            </nav>
+        </div>
+        {% endif %}
+    {% else %}
+        <div class="empty-state portfolio-empty">
+            <h3>Sua carteira ainda está vazia</h3>
+            <p>Pesquise no catálogo e use o botão “Adicionar”.</p>
+            <a class="button-link" href="{% url 'catalogo_fundos' %}">Explorar fundos</a>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}
