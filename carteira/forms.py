@@ -139,5 +139,5 @@ class FundoCatalogoBuscaForm(forms.Form):
         label="Pesquisar fundo",
         max_length=140,
         required=False,
-        help_text="Busque por nome do fundo, cliente, CNPJ ou tipo de fundo.",
+        help_text="Busque por nome do fundo, CNPJ, tipo, gestora ou administrador.",
     )

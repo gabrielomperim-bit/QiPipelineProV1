@@ -493,17 +493,44 @@ def _build_catalog_record(
 
 
 def _record_matches(record: dict[str, str], search_term: str) -> bool:
+    searchable_fields = [
+        record.get("fund_name", ""),
+        record.get("fund_legal_name", ""),
+        record.get("cnpj", ""),
+        record.get("raw_cnpj", ""),
+        record.get("cvm_fund_id", ""),
+        record.get("cvm_class_id", ""),
+        record.get("product_type", ""),
+        record.get("status", ""),
+        record.get("manager_name", ""),
+        record.get("manager_document", ""),
+        record.get("administrator_name", ""),
+        record.get("administrator_document", ""),
+        record.get("custodian_name", ""),
+        record.get("custodian_document", ""),
+        record.get("controller_name", ""),
+        record.get("controller_document", ""),
+    ]
     haystack = " ".join(
-        [
-            record["fund_name"],
-            record["fund_legal_name"],
-            record["manager_name"],
-            record["administrator_name"],
-            record["custodian_name"],
-            record["controller_name"],
-        ]
+        str(value or "") for value in searchable_fields
     ).lower()
-    return search_term in haystack
+    if search_term in haystack:
+        return True
+
+    document_search = search_term.strip()
+    allowed_document_characters = set("0123456789 .-/()")
+    search_digits = _digits_only(document_search)
+    if len(search_digits) >= 4 and all(character in allowed_document_characters for character in document_search):
+        document_fields = [
+            record.get("cnpj", ""),
+            record.get("raw_cnpj", ""),
+            record.get("manager_document", ""),
+            record.get("administrator_document", ""),
+            record.get("custodian_document", ""),
+            record.get("controller_document", ""),
+        ]
+        return any(search_digits in _digits_only(value) for value in document_fields)
+    return False
 
 
 def _is_qi_related(record: dict[str, str]) -> bool:

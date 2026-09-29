@@ -319,6 +319,13 @@ class WorkspaceSmokeTests(TestCase):
         self.assertContains(response, "05/05/2026 às 10:00")
         self.assertContains(response, "01/05/2026")
 
+    def test_catalogo_pesquisa_cnpj_com_ou_sem_pontuacao(self):
+        for cnpj in ("11111111000111", "11.111.111/0001-11", "11111111"):
+            with self.subTest(cnpj=cnpj):
+                response = self.client.get("/fundos/", {"consulta": cnpj}, HTTP_HOST="127.0.0.1")
+                self.assertContains(response, "Fundo Solis Alpha")
+                self.assertNotContains(response, "Fundo Solis Beta")
+
     def test_catalogo_filter_chip_removes_only_selected_filter(self):
         response = self.client.get(
             "/fundos/",
