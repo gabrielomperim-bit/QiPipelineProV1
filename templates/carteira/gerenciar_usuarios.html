@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Usuários | QITech{% endblock %}
+
+{% block content %}
+<section class="content-card">
+    <div class="section-header">
+        <div>
+            <p class="eyebrow">Administração</p>
+            <h2>Usuários do workspace</h2>
+            <p class="muted">Gerencie acessos e acompanhe quantos fundos existem em cada carteira.</p>
+        </div>
+    </div>
+
+    {% if admin_notice %}<div class="admin-notice">{{ admin_notice }}</div>{% endif %}
+    {% if generated_credential %}
+        <div class="credential-box" role="status">
+            <strong>Credencial temporária</strong>
+            <p>Copie agora. A senha não será exibida novamente.</p>
+            <div><span>Usuário</span><code>{{ generated_credential.username }}</code></div>
+            <div><span>Senha</span><code>{{ generated_credential.password }}</code></div>
+        </div>
+    {% endif %}
+
+    <div class="user-admin-layout">
+        <div class="user-list-panel">
+            <div class="user-panel-heading"><h3>Contas cadastradas</h3><span>{{ users|length }} usuário(s)</span></div>
+            <div class="table-wrapper user-table-wrapper">
+                <table>
+                    <thead><tr><th>Usuário</th><th>Status</th><th>Fundos</th><th>Último acesso</th><th>Ações</th></tr></thead>
+                    <tbody>
+                    {% for item in users %}
+                        <tr>
+                            <td><strong>{{ item.first_name|default:item.username }}</strong><small class="user-username">@{{ item.username }}{% if item.email %} · {{ item.email }}{% endif %}</small></td>
+                            <td><span class="user-status {% if item.is_active %}is-active{% else %}is-inactive{% endif %}">{% if item.is_active %}Ativo{% else %}Inativo{% endif %}</span></td>
+                            <td>{{ item.portfolio_count }}</td>
+                            <td>{{ item.last_login|date:"d/m/Y H:i"|default:"Nunca acessou" }}</td>
+                            <td>
+                                <div class="user-actions">
+                                    <form method="post">
+                                        {% csrf_token %}<input type="hidden" name="action" value="reset_password"><input type="hidden" name="user_id" value="{{ item.pk }}">
+                                        <button type="submit" class="secondary-button" onclick="return confirm('Gerar uma nova senha para {{ item.username|escapejs }}?')" {% if item.pk == request.user.pk %}disabled title="Use o link Senha para alterar sua própria senha"{% endif %}>Nova senha</button>
+                                    </form>
+                                    <form method="post">
+                                        {% csrf_token %}<input type="hidden" name="action" value="toggle_active"><input type="hidden" name="user_id" value="{{ item.pk }}">
+                                        <button type="submit" class="{% if item.is_active %}subtle-danger{% else %}secondary-button{% endif %}" {% if item.pk == request.user.pk %}disabled title="Você não pode desativar sua própria conta"{% endif %}>{% if item.is_active %}Desativar{% else %}Ativar{% endif %}</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <aside class="create-user-panel">
+            <h3>Novo usuário</h3>
+            <p class="muted">Uma senha temporária segura será gerada automaticamente.</p>
+            <form method="post" class="stack-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create">
+                {{ create_form.as_p }}
+                <button type="submit">Criar usuário</button>
+            </form>
+        </aside>
+    </div>
+</section>
+{% endblock %}

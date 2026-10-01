@@ -2,9 +2,11 @@ from io import BytesIO
 from pathlib import Path
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.db.models import Count
 from django.http import Http404, HttpResponse, JsonResponse
 from django.core.paginator import Paginator
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -22,6 +24,7 @@ from .forms import (
     FundoReceitaForm,
     RegraReceitaForm,
     UploadCarteiraForm,
+    WorkspaceUserCreateForm,
 )
 from .services.cvm_sync import (
     discover_qi_client_candidates,
@@ -68,6 +71,8 @@ from .services.data_store import (
 from .services.importers import import_clients_from_file
 from .services.public_company import enrich_company_profiles_for_client
 from .models import UserFund
+from .permissions import workspace_admin_required
+from .services.users import generate_temporary_password
 
 
 def _catalog_fund_key(fund):
@@ -84,6 +89,65 @@ def _matches_text_filter(value: str, operator: str, filter_value: str) -> bool:
     if operator == "neq":
         return normalized_value != normalized_filter
     return normalized_filter in normalized_value
+
+
+@workspace_admin_required
+def gerenciar_usuarios(request):
+    user_model = get_user_model()
+    is_create = request.method == "POST" and request.POST.get("action") == "create"
+    create_form = WorkspaceUserCreateForm(request.POST if is_create else None)
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "create" and create_form.is_valid():
+            username = create_form.cleaned_data["username"]
+            if user_model.objects.filter(username__iexact=username).exists():
+                create_form.add_error("username", "Já existe uma conta com esse usuário.")
+            else:
+                password = generate_temporary_password()
+                user = user_model.objects.create_user(
+                    username=username,
+                    first_name=create_form.cleaned_data["first_name"].strip(),
+                    email=create_form.cleaned_data["email"].strip(),
+                    password=password,
+                )
+                request.session["generated_credential"] = {"username": user.username, "password": password}
+                request.session["admin_notice"] = f"Usuário {user.username} criado com sucesso."
+                return redirect("gerenciar_usuarios")
+        elif action in {"toggle_active", "reset_password"}:
+            target = get_object_or_404(user_model, pk=request.POST.get("user_id"))
+            if target.is_superuser and not request.user.is_superuser:
+                request.session["admin_notice"] = "Uma conta superusuária só pode ser alterada por outro superusuário."
+            elif action == "toggle_active":
+                if target.pk == request.user.pk:
+                    request.session["admin_notice"] = "Você não pode desativar a própria conta."
+                else:
+                    target.is_active = not target.is_active
+                    target.save(update_fields=["is_active"])
+                    state = "ativado" if target.is_active else "desativado"
+                    request.session["admin_notice"] = f"Usuário {target.username} {state}."
+            else:
+                if target.pk == request.user.pk:
+                    request.session["admin_notice"] = "Para alterar sua própria senha, use o link Senha no cabeçalho."
+                else:
+                    password = generate_temporary_password()
+                    target.set_password(password)
+                    target.save(update_fields=["password"])
+                    request.session["generated_credential"] = {"username": target.username, "password": password}
+                    request.session["admin_notice"] = f"Nova senha gerada para {target.username}."
+            return redirect("gerenciar_usuarios")
+
+    users = user_model.objects.annotate(portfolio_count=Count("portfolio_funds")).order_by("first_name", "username")
+    return render(
+        request,
+        "carteira/gerenciar_usuarios.html",
+        {
+            "users": users,
+            "create_form": create_form,
+            "generated_credential": request.session.pop("generated_credential", None),
+            "admin_notice": request.session.pop("admin_notice", None),
+        },
+    )
 
 
 def dashboard(request):

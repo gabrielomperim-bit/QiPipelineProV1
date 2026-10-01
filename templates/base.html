@@ -21,6 +21,7 @@
             <nav class="top-links" aria-label="Navegação principal">
                 <a{% if request.resolver_match.url_name == "catalogo_fundos" or request.resolver_match.url_name == "home" %} class="active"{% endif %} href="{% url 'catalogo_fundos' %}">Fundos</a>
                 <a{% if request.resolver_match.url_name == "minha_carteira" %} class="active"{% endif %} href="{% url 'minha_carteira' %}">Minha carteira</a>
+                {% if is_workspace_admin %}<a{% if request.resolver_match.url_name == "gerenciar_usuarios" %} class="active"{% endif %} href="{% url 'gerenciar_usuarios' %}">Usuários</a>{% endif %}
             </nav>
             <div class="top-user">
                 <span>{{ request.user.first_name|default:request.user.username }}</span>

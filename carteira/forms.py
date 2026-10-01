@@ -141,3 +141,18 @@ class FundoCatalogoBuscaForm(forms.Form):
         required=False,
         help_text="Busque por nome do fundo, CNPJ, tipo, gestora ou administrador.",
     )
+
+
+class WorkspaceUserCreateForm(forms.Form):
+    username = forms.RegexField(
+        label="Usuário",
+        regex=r"^[a-zA-Z0-9_.-]+$",
+        max_length=40,
+        help_text="Use letras, números, ponto, hífen ou sublinhado.",
+        error_messages={"invalid": "Informe um nome de usuário válido, sem espaços."},
+    )
+    first_name = forms.CharField(label="Nome", max_length=80)
+    email = forms.EmailField(label="E-mail", required=False)
+
+    def clean_username(self):
+        return self.cleaned_data["username"].strip().casefold()

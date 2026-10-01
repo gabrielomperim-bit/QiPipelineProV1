@@ -1357,6 +1357,131 @@ td form {
     max-width: 620px;
 }
 
+.admin-notice,
+.credential-box {
+    margin: 16px 0;
+    padding: 14px 16px;
+    border: 1px solid #bcd8ca;
+    border-radius: 10px;
+    color: #075f3c;
+    background: #eefaf4;
+}
+
+.credential-box {
+    border-color: #9ec4f4;
+    color: var(--text);
+    background: #eef6ff;
+}
+
+.credential-box p {
+    margin: 6px 0 12px;
+    color: var(--muted);
+}
+
+.credential-box div {
+    display: grid;
+    grid-template-columns: 80px minmax(0, 1fr);
+    gap: 10px;
+    margin-top: 7px;
+}
+
+.credential-box code {
+    width: fit-content;
+    padding: 3px 7px;
+    border-radius: 5px;
+    background: #ffffff;
+    font-size: 0.9rem;
+    user-select: all;
+}
+
+.user-admin-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 310px;
+    align-items: start;
+    gap: 20px;
+    margin-top: 18px;
+}
+
+.user-panel-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.user-panel-heading h3,
+.create-user-panel h3 {
+    margin: 0;
+}
+
+.user-panel-heading span {
+    color: var(--muted);
+    font-size: 0.78rem;
+}
+
+.user-table-wrapper {
+    max-height: none;
+}
+
+.user-username {
+    display: block;
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 0.72rem;
+}
+
+.user-status {
+    display: inline-flex;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 800;
+}
+
+.user-status.is-active {
+    color: #087044;
+    background: #e8f8f0;
+}
+
+.user-status.is-inactive {
+    color: #8c3535;
+    background: #fff0f0;
+}
+
+.user-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.user-actions button {
+    padding: 7px 9px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+}
+
+.user-actions .subtle-danger {
+    color: #a43434;
+    border: 1px solid #efcaca;
+    background: #ffffff;
+}
+
+.user-actions button:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+    transform: none;
+}
+
+.create-user-panel {
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #f8faff;
+}
+
+.create-user-panel .stack-form {
+    margin-top: 16px;
+}
+
 @media (max-width: 900px) {
     .page-shell {
         display: flex;
@@ -1404,6 +1529,14 @@ td form {
 
     .portfolio-summary-grid {
         grid-template-columns: 1fr;
+    }
+
+    .user-admin-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .create-user-panel {
+        order: -1;
     }
 
     .hero-card {

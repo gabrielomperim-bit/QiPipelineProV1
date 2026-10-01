@@ -68,11 +68,13 @@ Crie Kathleen, Cristal, Julia e Gabriel. O comando mostra uma senha temporaria p
 docker compose exec web python manage.py create_workspace_users
 ```
 
-Cada pessoa pode trocar a propria senha pelo link `Senha` no cabecalho. Para redefinir as tres senhas no futuro:
+Cada pessoa pode trocar a propria senha pelo link `Senha` no cabecalho. Para redefinir as contas iniciais no futuro:
 
 ```bash
 docker compose exec web python manage.py create_workspace_users --reset-passwords
 ```
+
+O usuario `gabriel` acessa a guia `Usuarios`, onde pode criar contas, desativar acessos e gerar senhas temporarias sem usar o terminal.
 
 Acesse `https://SEU-IP-COM-HIFENS.sslip.io`.
 

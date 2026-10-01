@@ -1,8 +1,7 @@
-import secrets
-import string
-
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
+
+from carteira.services.users import generate_temporary_password
 
 
 DEFAULT_USERS = {
@@ -11,11 +10,6 @@ DEFAULT_USERS = {
     "julia": "Julia",
     "gabriel": "Gabriel",
 }
-
-
-def generate_password(length=16):
-    alphabet = string.ascii_letters + string.digits + "!@#$%"
-    return "".join(secrets.choice(alphabet) for _ in range(length))
 
 
 class Command(BaseCommand):
@@ -37,7 +31,7 @@ class Command(BaseCommand):
                 defaults={"first_name": DEFAULT_USERS.get(normalized, normalized.title())},
             )
             if created or options["reset_passwords"]:
-                password = generate_password()
+                password = generate_temporary_password()
                 user.set_password(password)
                 user.save(update_fields=["password"])
                 credentials.append((normalized, password))

@@ -17,6 +17,7 @@ urlpatterns = [
         name="password_change",
     ),
     path("", views.catalogo_fundos, name="home"),
+    path("usuarios/", views.gerenciar_usuarios, name="gerenciar_usuarios"),
     path("visao-geral/", views.dashboard, name="dashboard"),
     path("dashboard/usuario/", views.dashboard_usuario, name="dashboard_usuario"),
     path("dashboard/comercial/", views.analise_comercial, name="analise_comercial"),

@@ -225,6 +225,47 @@ class WorkspaceSmokeTests(TestCase):
         self.assertTrue(user_model.objects.get(username="gabriel").has_usable_password())
         self.assertIn("Credenciais temporarias", output.getvalue())
 
+    def test_administracao_de_usuarios_e_restrita_ao_gabriel(self):
+        denied = self.client.get("/usuarios/", HTTP_HOST="127.0.0.1")
+        self.assertEqual(denied.status_code, 403)
+
+        gabriel = get_user_model().objects.create_user(username="gabriel", first_name="Gabriel", password="seguro-123")
+        self.client.force_login(gabriel)
+        allowed = self.client.get("/usuarios/", HTTP_HOST="127.0.0.1")
+        self.assertEqual(allowed.status_code, 200)
+        self.assertContains(allowed, "Usuários do workspace")
+
+    def test_administrador_cria_desativa_e_redefine_senha(self):
+        gabriel = get_user_model().objects.create_user(username="gabriel", first_name="Gabriel", password="seguro-123")
+        self.client.force_login(gabriel)
+        created = self.client.post(
+            "/usuarios/",
+            {"action": "create", "username": "marina", "first_name": "Marina", "email": "marina@example.com"},
+            HTTP_HOST="127.0.0.1",
+            follow=True,
+        )
+        self.assertContains(created, "Credencial temporária")
+        marina = get_user_model().objects.get(username="marina")
+        original_password_hash = marina.password
+
+        reset = self.client.post(
+            "/usuarios/",
+            {"action": "reset_password", "user_id": marina.pk},
+            HTTP_HOST="127.0.0.1",
+            follow=True,
+        )
+        self.assertContains(reset, "Nova senha gerada")
+        marina.refresh_from_db()
+        self.assertNotEqual(marina.password, original_password_hash)
+
+        self.client.post(
+            "/usuarios/",
+            {"action": "toggle_active", "user_id": marina.pk},
+            HTTP_HOST="127.0.0.1",
+        )
+        marina.refresh_from_db()
+        self.assertFalse(marina.is_active)
+
     def test_adiciona_varios_fundos_na_carteira(self):
         response = self.client.post(
             "/fundos/minha-carteira/adicionar/",

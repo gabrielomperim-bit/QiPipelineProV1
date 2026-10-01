@@ -52,6 +52,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "carteira.context_processors.workspace_permissions",
             ],
         },
     },
@@ -101,6 +102,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "catalogo_fundos"
 LOGOUT_REDIRECT_URL = "login"
+WORKSPACE_ADMIN_USERNAMES = {
+    username.strip().casefold()
+    for username in os.environ.get("WORKSPACE_ADMIN_USERNAMES", "gabriel").split(",")
+    if username.strip()
+}
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
