@@ -306,6 +306,22 @@ class WorkspaceSmokeTests(TestCase):
         self.assertEqual(worksheet["A2"].value, "Fundo Solis Alpha")
         self.assertIsNone(worksheet["A3"].value)
 
+    def test_minha_carteira_agrupa_fundos_por_gestora(self):
+        self.client.post(
+            "/fundos/minha-carteira/adicionar/",
+            {"catalog_keys": ["C001", "C002"], "next": "/fundos/"},
+            HTTP_HOST="127.0.0.1",
+        )
+        response = self.client.get("/minha-carteira/", {"view": "manager"}, HTTP_HOST="127.0.0.1")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Por gestora")
+        self.assertContains(response, "Consultoria Solis", count=1)
+        self.assertContains(response, "2 fundos")
+        self.assertContains(response, "Fundo Solis Alpha")
+        self.assertContains(response, "Fundo Solis Beta")
+        self.assertContains(response, "R$ 2.000.000,00")
+
     def test_catalogo_exibe_atalho_para_sincronizar_cvm(self):
         response = self.client.get("/fundos/", HTTP_HOST="127.0.0.1")
 

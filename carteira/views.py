@@ -715,17 +715,37 @@ def minha_carteira(request):
         fund["catalog_key"] = _catalog_fund_key(fund)
 
     total_pl = sum((parse_decimal(fund.get("pl", "0")) for fund in funds), start=parse_decimal("0"))
+    view_mode = "manager" if request.GET.get("view") == "manager" else "table"
+    manager_groups = []
+    if view_mode == "manager":
+        grouped_funds = {}
+        for fund in funds:
+            manager_name = str(fund.get("manager_name") or "").strip() or "Gestora não informada"
+            group = grouped_funds.setdefault(manager_name, {"name": manager_name, "funds": [], "pl_value": parse_decimal("0")})
+            group["funds"].append(fund)
+            group["pl_value"] += parse_decimal(fund.get("pl", "0"))
+        manager_groups = sorted(grouped_funds.values(), key=lambda group: group["name"].casefold())
+        for group in manager_groups:
+            group["fund_count"] = len(group["funds"])
+            group["formatted_pl"] = format_currency(group["pl_value"])
+
     per_page = request.GET.get("per_page") or "20"
     per_page_value = int(per_page) if per_page in {"20", "50", "100"} else 20
-    paginator = Paginator(funds, per_page_value)
+    paginator = Paginator(manager_groups if view_mode == "manager" else funds, per_page_value)
     page_obj = paginator.get_page(request.GET.get("page"))
     pagination_params = request.GET.copy()
     pagination_params.pop("page", None)
+    view_params = pagination_params.copy()
+    view_params.pop("view", None)
     return render(
         request,
         "carteira/minha_carteira.html",
         {
-            "funds": page_obj.object_list,
+            "funds": page_obj.object_list if view_mode == "table" else [],
+            "manager_groups": page_obj.object_list if view_mode == "manager" else [],
+            "view_mode": view_mode,
+            "has_results": bool(funds),
+            "manager_count": len(manager_groups),
             "page_obj": page_obj,
             "fund_count": len(funds),
             "portfolio_total_count": len(selected_keys),
@@ -737,6 +757,7 @@ def minha_carteira(request):
             "pagination_range": paginator.get_elided_page_range(page_obj.number, on_each_side=2, on_ends=1),
             "pagination_ellipsis": paginator.ELLIPSIS,
             "pagination_query": pagination_params.urlencode(),
+            "view_query": view_params.urlencode(),
             **catalog_filters,
         },
     )
