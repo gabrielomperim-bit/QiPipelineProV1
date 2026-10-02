@@ -43,7 +43,7 @@
     <div class="portfolio-view-switcher" aria-label="Modo de visualização">
         <span>Visualização</span>
         <a class="{% if view_mode == 'table' %}is-active{% endif %}" href="{% url 'minha_carteira' %}{% if view_query %}?{{ view_query }}{% endif %}">Tabela</a>
-        <a class="{% if view_mode == 'manager' %}is-active{% endif %}" href="?{% if view_query %}{{ view_query }}&amp;{% endif %}view=manager">Por gestora</a>
+        <a class="{% if view_mode == 'manager' %}is-active{% endif %}" href="?{% if view_query %}{{ view_query }}&amp;{% endif %}view=manager">Gestora</a>
     </div>
 
     <details class="filters-panel" {% if active_filters %}open{% endif %}>

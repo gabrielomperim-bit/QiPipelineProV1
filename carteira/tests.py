@@ -315,7 +315,7 @@ class WorkspaceSmokeTests(TestCase):
         response = self.client.get("/minha-carteira/", {"view": "manager"}, HTTP_HOST="127.0.0.1")
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Por gestora")
+        self.assertContains(response, ">Gestora</a>")
         self.assertContains(response, "Consultoria Solis", count=1)
         self.assertContains(response, "2 fundos")
         self.assertContains(response, "Fundo Solis Alpha")
