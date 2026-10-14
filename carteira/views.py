@@ -1,4 +1,5 @@
 from io import BytesIO
+from datetime import timedelta
 from pathlib import Path
 
 from django.conf import settings
@@ -70,7 +71,7 @@ from .services.data_store import (
 )
 from .services.importers import import_clients_from_file
 from .services.public_company import enrich_company_profiles_for_client
-from .models import UserFund
+from .models import UserActivity, UserFund
 from .permissions import workspace_admin_required
 from .services.users import generate_temporary_password
 
@@ -137,7 +138,13 @@ def gerenciar_usuarios(request):
                     request.session["admin_notice"] = f"Nova senha gerada para {target.username}."
             return redirect("gerenciar_usuarios")
 
-    users = user_model.objects.annotate(portfolio_count=Count("portfolio_funds")).order_by("first_name", "username")
+    users = list(user_model.objects.annotate(portfolio_count=Count("portfolio_funds")).order_by("first_name", "username"))
+    activity_by_user = {
+        activity.user_id: activity.last_seen_at
+        for activity in UserActivity.objects.filter(user_id__in=[item.pk for item in users])
+    }
+    for item in users:
+        item.last_activity_at = activity_by_user.get(item.pk) or item.last_login
     return render(
         request,
         "carteira/gerenciar_usuarios.html",
@@ -705,6 +712,56 @@ def adicionar_fundos_carteira(request):
     return redirect(next_url)
 
 
+def _build_portfolio_dashboard(funds, total_pl):
+    def aggregate(field, fallback):
+        grouped = {}
+        for fund in funds:
+            label = str(fund.get(field) or "").strip() or fallback
+            item = grouped.setdefault(label, {"label": label, "pl_value": parse_decimal("0"), "fund_count": 0})
+            item["pl_value"] += parse_decimal(fund.get("pl", "0"))
+            item["fund_count"] += 1
+        items = sorted(grouped.values(), key=lambda item: (-item["pl_value"], item["label"].casefold()))
+        for item in items:
+            item["formatted_pl"] = format_currency(item["pl_value"])
+            item["percentage"] = round(float(item["pl_value"] / total_pl * 100), 1) if total_pl else 0
+        return items
+
+    managers = aggregate("manager_name", "Gestora não informada")
+    administrators = aggregate("administrator_name", "Administrador não informado")
+    fund_types = aggregate("product_type", "Tipo não informado")
+    average_pl = total_pl / len(funds) if funds else parse_decimal("0")
+    reference_limit = timezone.localdate() - timedelta(days=60)
+    stale_count = 0
+    missing_reference_count = 0
+    reference_dates = []
+    for fund in funds:
+        reference_date = parse_date(str(fund.get("pl_date") or ""))
+        if reference_date:
+            reference_dates.append(reference_date)
+            if reference_date < reference_limit:
+                stale_count += 1
+        else:
+            missing_reference_count += 1
+
+    top_funds = sorted(funds, key=lambda fund: parse_decimal(fund.get("pl", "0")), reverse=True)[:10]
+    for fund in top_funds:
+        pl_value = parse_decimal(fund.get("pl", "0"))
+        fund["portfolio_percentage"] = round(float(pl_value / total_pl * 100), 1) if total_pl else 0
+
+    return {
+        "manager_count": len(managers),
+        "administrator_count": len(administrators),
+        "average_pl": format_currency(average_pl),
+        "stale_count": stale_count,
+        "missing_reference_count": missing_reference_count,
+        "latest_reference": max(reference_dates).strftime("%d/%m/%Y") if reference_dates else "Não disponível",
+        "top_managers": managers[:7],
+        "top_administrators": administrators[:7],
+        "fund_types": fund_types,
+        "top_funds": top_funds,
+    }
+
+
 def minha_carteira(request):
     selected_keys = set(UserFund.objects.filter(user=request.user).values_list("catalog_key", flat=True))
     search_form = FundoCatalogoBuscaForm(request.GET or None)
@@ -715,7 +772,9 @@ def minha_carteira(request):
         fund["catalog_key"] = _catalog_fund_key(fund)
 
     total_pl = sum((parse_decimal(fund.get("pl", "0")) for fund in funds), start=parse_decimal("0"))
-    view_mode = "manager" if request.GET.get("view") == "manager" else "table"
+    requested_view = request.GET.get("view")
+    view_mode = requested_view if requested_view in {"dashboard", "manager"} else "table"
+    portfolio_dashboard = _build_portfolio_dashboard(funds, total_pl)
     manager_groups = []
     if view_mode == "manager":
         grouped_funds = {}
@@ -731,7 +790,8 @@ def minha_carteira(request):
 
     per_page = request.GET.get("per_page") or "20"
     per_page_value = int(per_page) if per_page in {"20", "50", "100"} else 20
-    paginator = Paginator(manager_groups if view_mode == "manager" else funds, per_page_value)
+    paginated_items = manager_groups if view_mode == "manager" else funds if view_mode == "table" else []
+    paginator = Paginator(paginated_items, per_page_value)
     page_obj = paginator.get_page(request.GET.get("page"))
     pagination_params = request.GET.copy()
     pagination_params.pop("page", None)
@@ -746,6 +806,7 @@ def minha_carteira(request):
             "view_mode": view_mode,
             "has_results": bool(funds),
             "manager_count": len(manager_groups),
+            "portfolio_dashboard": portfolio_dashboard,
             "page_obj": page_obj,
             "fund_count": len(funds),
             "portfolio_total_count": len(selected_keys),

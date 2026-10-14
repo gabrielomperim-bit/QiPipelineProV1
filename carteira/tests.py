@@ -2,16 +2,18 @@ import csv
 import io
 import json
 import tempfile
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.test import TestCase, override_settings
+from django.utils import timezone
 from openpyxl import Workbook, load_workbook
 
 from .services.data_store import add_client, add_fund, ensure_storage
+from .models import UserActivity
 
 
 class WorkspaceSmokeTests(TestCase):
@@ -234,6 +236,18 @@ class WorkspaceSmokeTests(TestCase):
         allowed = self.client.get("/usuarios/", HTTP_HOST="127.0.0.1")
         self.assertEqual(allowed.status_code, 200)
         self.assertContains(allowed, "Usuários do workspace")
+        self.assertContains(allowed, "Última atividade")
+
+    def test_ultima_atividade_atualiza_ao_carregar_uma_pagina(self):
+        self.client.get("/fundos/", HTTP_HOST="127.0.0.1")
+        activity = UserActivity.objects.get(user=self.user)
+        old_timestamp = timezone.now() - timedelta(days=1)
+        UserActivity.objects.filter(pk=activity.pk).update(last_seen_at=old_timestamp)
+
+        self.client.get("/minha-carteira/", HTTP_HOST="127.0.0.1")
+
+        activity.refresh_from_db()
+        self.assertGreater(activity.last_seen_at, old_timestamp)
 
     def test_administrador_cria_desativa_e_redefine_senha(self):
         gabriel = get_user_model().objects.create_user(username="gabriel", first_name="Gabriel", password="seguro-123")
@@ -321,6 +335,27 @@ class WorkspaceSmokeTests(TestCase):
         self.assertContains(response, "Fundo Solis Alpha")
         self.assertContains(response, "Fundo Solis Beta")
         self.assertContains(response, "R$ 2.000.000,00")
+
+    def test_dashboard_da_carteira_reflete_fundos_e_filtros(self):
+        self.client.post(
+            "/fundos/minha-carteira/adicionar/",
+            {"catalog_keys": ["C001", "C002"], "next": "/fundos/"},
+            HTTP_HOST="127.0.0.1",
+        )
+        response = self.client.get(
+            "/minha-carteira/",
+            {"view": "dashboard", "fund_type": "FIDC"},
+            HTTP_HOST="127.0.0.1",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "PL por gestora")
+        self.assertContains(response, "PL por tipo de fundo")
+        self.assertContains(response, "PL por administrador")
+        self.assertContains(response, "Maiores fundos por PL")
+        self.assertContains(response, "Fundo Solis Alpha")
+        self.assertNotContains(response, "Fundo Solis Beta")
+        self.assertContains(response, "R$ 1.200.000,00")
 
     def test_catalogo_exibe_atalho_para_sincronizar_cvm(self):
         response = self.client.get("/fundos/", HTTP_HOST="127.0.0.1")

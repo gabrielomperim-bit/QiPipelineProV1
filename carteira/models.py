@@ -17,3 +17,15 @@ class UserFund(models.Model):
 
     def __str__(self):
         return f"{self.user.username}: {self.fund_name}"
+
+
+class UserActivity(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="workspace_activity")
+    last_seen_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "atividade do usuário"
+        verbose_name_plural = "atividades dos usuários"
+
+    def __str__(self):
+        return f"{self.user.username}: {self.last_seen_at}"

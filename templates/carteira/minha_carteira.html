@@ -42,6 +42,7 @@
 
     <div class="portfolio-view-switcher" aria-label="Modo de visualização">
         <span>Visualização</span>
+        <a class="{% if view_mode == 'dashboard' %}is-active{% endif %}" href="?{% if view_query %}{{ view_query }}&amp;{% endif %}view=dashboard">Dashboard</a>
         <a class="{% if view_mode == 'table' %}is-active{% endif %}" href="{% url 'minha_carteira' %}{% if view_query %}?{{ view_query }}{% endif %}">Tabela</a>
         <a class="{% if view_mode == 'manager' %}is-active{% endif %}" href="?{% if view_query %}{{ view_query }}&amp;{% endif %}view=manager">Gestora</a>
     </div>
@@ -52,7 +53,7 @@
             <span class="filters-toggle-label" aria-hidden="true"><span class="label-show">Mostrar filtros</span><span class="label-hide">Recolher filtros</span><span class="filters-chevron">⌄</span></span>
         </summary>
         <form method="get" class="stack-form search-box filters-form">
-            {% if view_mode == "manager" %}<input type="hidden" name="view" value="manager">{% endif %}
+            {% if view_mode != "table" %}<input type="hidden" name="view" value="{{ view_mode }}">{% endif %}
             {{ search_form.as_p }}
             <div class="filters-grid">
                 <p><label for="fund_type">Tipo de fundo</label><select name="fund_type" id="fund_type"><option value="">Todos</option>{% for option in fund_type_options %}<option value="{{ option }}" {% if fund_type_filter == option %}selected{% endif %}>{{ option }}</option>{% endfor %}</select></p>
@@ -61,7 +62,7 @@
                 <p><label for="sort">Ordenar</label><select name="sort" id="sort"><option value="">Padrão</option><option value="name" {% if sort == "name" %}selected{% endif %}>Nome do fundo</option><option value="pl_asc" {% if sort == "pl_asc" %}selected{% endif %}>PL crescente</option><option value="pl_desc" {% if sort == "pl_desc" %}selected{% endif %}>PL decrescente</option></select></p>
                 <p><label for="per_page">Por página</label><select name="per_page" id="per_page"><option value="20" {% if per_page == "20" %}selected{% endif %}>20</option><option value="50" {% if per_page == "50" %}selected{% endif %}>50</option><option value="100" {% if per_page == "100" %}selected{% endif %}>100</option></select></p>
             </div>
-            <div class="form-actions"><button type="submit">Aplicar filtros</button><a class="clear-link" href="{% url 'minha_carteira' %}{% if view_mode == 'manager' %}?view=manager{% endif %}">Limpar</a></div>
+            <div class="form-actions"><button type="submit">Aplicar filtros</button><a class="clear-link" href="{% url 'minha_carteira' %}{% if view_mode != 'table' %}?view={{ view_mode }}{% endif %}">Limpar</a></div>
         </form>
     </details>
 
@@ -69,12 +70,71 @@
         <div class="active-filters" aria-label="Filtros aplicados">
             <span class="active-filters-title">Filtros aplicados</span>
             {% for filter in active_filters %}<a class="filter-chip" href="{{ filter.remove_url }}" title="Remover {{ filter.label }}">{{ filter.label }} <span aria-hidden="true">×</span></a>{% endfor %}
-            <a class="clear-all-filters" href="{% url 'minha_carteira' %}{% if view_mode == 'manager' %}?view=manager{% endif %}">Limpar todos</a>
+            <a class="clear-all-filters" href="{% url 'minha_carteira' %}{% if view_mode != 'table' %}?view={{ view_mode }}{% endif %}">Limpar todos</a>
         </div>
     {% endif %}
 
     {% if has_results %}
-        {% if view_mode == "manager" %}
+        {% if view_mode == "dashboard" %}
+        <div class="portfolio-dashboard">
+            <div class="portfolio-dashboard-metrics">
+                <article><span>PL médio por fundo</span><strong>{{ portfolio_dashboard.average_pl }}</strong></article>
+                <article><span>Gestoras</span><strong>{{ portfolio_dashboard.manager_count }}</strong></article>
+                <article><span>Administradores</span><strong>{{ portfolio_dashboard.administrator_count }}</strong></article>
+                <article class="{% if portfolio_dashboard.stale_count or portfolio_dashboard.missing_reference_count %}has-warning{% endif %}"><span>PL sem referência recente</span><strong>{{ portfolio_dashboard.stale_count|add:portfolio_dashboard.missing_reference_count }}</strong><small>Referência mais recente: {{ portfolio_dashboard.latest_reference }}</small></article>
+            </div>
+
+            <div class="portfolio-dashboard-grid">
+                <article class="portfolio-chart-card">
+                    <header><p class="eyebrow">Concentração</p><h3>PL por gestora</h3></header>
+                    <div class="portfolio-bars">
+                        {% for item in portfolio_dashboard.top_managers %}
+                        <div class="portfolio-bar-row">
+                            <div><span title="{{ item.label }}">{{ item.label }}</span><strong>{{ item.formatted_pl }}</strong></div>
+                            <div class="portfolio-bar-track"><span style="width: {{ item.percentage }}%"></span></div>
+                            <small>{{ item.percentage }}% · {{ item.fund_count }} fundo{{ item.fund_count|pluralize:"s" }}</small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </article>
+
+                <article class="portfolio-chart-card">
+                    <header><p class="eyebrow">Produtos</p><h3>PL por tipo de fundo</h3></header>
+                    <div class="portfolio-bars portfolio-bars-cyan">
+                        {% for item in portfolio_dashboard.fund_types %}
+                        <div class="portfolio-bar-row">
+                            <div><span title="{{ item.label }}">{{ item.label }}</span><strong>{{ item.formatted_pl }}</strong></div>
+                            <div class="portfolio-bar-track"><span style="width: {{ item.percentage }}%"></span></div>
+                            <small>{{ item.percentage }}% · {{ item.fund_count }} fundo{{ item.fund_count|pluralize:"s" }}</small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </article>
+
+                <article class="portfolio-chart-card">
+                    <header><p class="eyebrow">Concentração</p><h3>PL por administrador</h3></header>
+                    <div class="portfolio-bars portfolio-bars-green">
+                        {% for item in portfolio_dashboard.top_administrators %}
+                        <div class="portfolio-bar-row">
+                            <div><span title="{{ item.label }}">{{ item.label }}</span><strong>{{ item.formatted_pl }}</strong></div>
+                            <div class="portfolio-bar-track"><span style="width: {{ item.percentage }}%"></span></div>
+                            <small>{{ item.percentage }}% · {{ item.fund_count }} fundo{{ item.fund_count|pluralize:"s" }}</small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </article>
+
+                <article class="portfolio-chart-card portfolio-top-funds">
+                    <header><p class="eyebrow">Ranking</p><h3>Maiores fundos por PL</h3></header>
+                    <ol>
+                        {% for fund in portfolio_dashboard.top_funds %}
+                        <li><span><b>{{ forloop.counter }}</b><span title="{{ fund.fund_name }}">{{ fund.fund_name }}</span></span><strong>{{ fund.formatted_pl }} <small>{{ fund.portfolio_percentage }}%</small></strong></li>
+                        {% endfor %}
+                    </ol>
+                </article>
+            </div>
+        </div>
+        {% elif view_mode == "manager" %}
         <div class="manager-groups">
             {% for group in manager_groups %}
             <details class="manager-group">
@@ -150,7 +210,7 @@
             {% if portfolio_total_count %}
             <h3>Nenhum fundo encontrado</h3>
             <p>Revise ou limpe os filtros aplicados.</p>
-            <a class="button-link" href="{% url 'minha_carteira' %}{% if view_mode == 'manager' %}?view=manager{% endif %}">Limpar filtros</a>
+            <a class="button-link" href="{% url 'minha_carteira' %}{% if view_mode != 'table' %}?view={{ view_mode }}{% endif %}">Limpar filtros</a>
             {% else %}
             <h3>Sua carteira ainda está vazia</h3>
             <p>Pesquise no catálogo e use o botão “Adicionar”.</p>
