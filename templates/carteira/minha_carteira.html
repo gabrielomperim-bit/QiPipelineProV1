@@ -42,7 +42,6 @@
 
     <div class="portfolio-view-switcher" aria-label="Modo de visualização">
         <span>Visualização</span>
-        <a class="{% if view_mode == 'dashboard' %}is-active{% endif %}" href="?{% if view_query %}{{ view_query }}&amp;{% endif %}view=dashboard">Dashboard</a>
         <a class="{% if view_mode == 'table' %}is-active{% endif %}" href="{% url 'minha_carteira' %}{% if view_query %}?{{ view_query }}{% endif %}">Tabela</a>
         <a class="{% if view_mode == 'manager' %}is-active{% endif %}" href="?{% if view_query %}{{ view_query }}&amp;{% endif %}view=manager">Gestora</a>
     </div>
@@ -75,66 +74,7 @@
     {% endif %}
 
     {% if has_results %}
-        {% if view_mode == "dashboard" %}
-        <div class="portfolio-dashboard">
-            <div class="portfolio-dashboard-metrics">
-                <article><span>PL médio por fundo</span><strong>{{ portfolio_dashboard.average_pl }}</strong></article>
-                <article><span>Gestoras</span><strong>{{ portfolio_dashboard.manager_count }}</strong></article>
-                <article><span>Administradores</span><strong>{{ portfolio_dashboard.administrator_count }}</strong></article>
-                <article class="{% if portfolio_dashboard.stale_count or portfolio_dashboard.missing_reference_count %}has-warning{% endif %}"><span>PL sem referência recente</span><strong>{{ portfolio_dashboard.stale_count|add:portfolio_dashboard.missing_reference_count }}</strong><small>Referência mais recente: {{ portfolio_dashboard.latest_reference }}</small></article>
-            </div>
-
-            <div class="portfolio-dashboard-grid">
-                <article class="portfolio-chart-card">
-                    <header><p class="eyebrow">Concentração</p><h3>PL por gestora</h3></header>
-                    <div class="portfolio-bars">
-                        {% for item in portfolio_dashboard.top_managers %}
-                        <div class="portfolio-bar-row">
-                            <div><span title="{{ item.label }}">{{ item.label }}</span><strong>{{ item.formatted_pl }}</strong></div>
-                            <div class="portfolio-bar-track"><span style="width: {{ item.percentage }}%"></span></div>
-                            <small>{{ item.percentage }}% · {{ item.fund_count }} fundo{{ item.fund_count|pluralize:"s" }}</small>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </article>
-
-                <article class="portfolio-chart-card">
-                    <header><p class="eyebrow">Produtos</p><h3>PL por tipo de fundo</h3></header>
-                    <div class="portfolio-bars portfolio-bars-cyan">
-                        {% for item in portfolio_dashboard.fund_types %}
-                        <div class="portfolio-bar-row">
-                            <div><span title="{{ item.label }}">{{ item.label }}</span><strong>{{ item.formatted_pl }}</strong></div>
-                            <div class="portfolio-bar-track"><span style="width: {{ item.percentage }}%"></span></div>
-                            <small>{{ item.percentage }}% · {{ item.fund_count }} fundo{{ item.fund_count|pluralize:"s" }}</small>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </article>
-
-                <article class="portfolio-chart-card">
-                    <header><p class="eyebrow">Concentração</p><h3>PL por administrador</h3></header>
-                    <div class="portfolio-bars portfolio-bars-green">
-                        {% for item in portfolio_dashboard.top_administrators %}
-                        <div class="portfolio-bar-row">
-                            <div><span title="{{ item.label }}">{{ item.label }}</span><strong>{{ item.formatted_pl }}</strong></div>
-                            <div class="portfolio-bar-track"><span style="width: {{ item.percentage }}%"></span></div>
-                            <small>{{ item.percentage }}% · {{ item.fund_count }} fundo{{ item.fund_count|pluralize:"s" }}</small>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </article>
-
-                <article class="portfolio-chart-card portfolio-top-funds">
-                    <header><p class="eyebrow">Ranking</p><h3>Maiores fundos por PL</h3></header>
-                    <ol>
-                        {% for fund in portfolio_dashboard.top_funds %}
-                        <li><span><b>{{ forloop.counter }}</b><span title="{{ fund.fund_name }}">{{ fund.fund_name }}</span></span><strong>{{ fund.formatted_pl }} <small>{{ fund.portfolio_percentage }}%</small></strong></li>
-                        {% endfor %}
-                    </ol>
-                </article>
-            </div>
-        </div>
-        {% elif view_mode == "manager" %}
+        {% if view_mode == "manager" %}
         <div class="manager-groups">
             {% for group in manager_groups %}
             <details class="manager-group">

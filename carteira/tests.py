@@ -336,27 +336,6 @@ class WorkspaceSmokeTests(TestCase):
         self.assertContains(response, "Fundo Solis Beta")
         self.assertContains(response, "R$ 2.000.000,00")
 
-    def test_dashboard_da_carteira_reflete_fundos_e_filtros(self):
-        self.client.post(
-            "/fundos/minha-carteira/adicionar/",
-            {"catalog_keys": ["C001", "C002"], "next": "/fundos/"},
-            HTTP_HOST="127.0.0.1",
-        )
-        response = self.client.get(
-            "/minha-carteira/",
-            {"view": "dashboard", "fund_type": "FIDC"},
-            HTTP_HOST="127.0.0.1",
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "PL por gestora")
-        self.assertContains(response, "PL por tipo de fundo")
-        self.assertContains(response, "PL por administrador")
-        self.assertContains(response, "Maiores fundos por PL")
-        self.assertContains(response, "Fundo Solis Alpha")
-        self.assertNotContains(response, "Fundo Solis Beta")
-        self.assertContains(response, "R$ 1.200.000,00")
-
     def test_catalogo_exibe_atalho_para_sincronizar_cvm(self):
         response = self.client.get("/fundos/", HTTP_HOST="127.0.0.1")
 
